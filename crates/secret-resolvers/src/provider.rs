@@ -43,3 +43,15 @@ pub struct ResolvedSecret {
 pub trait SecretResolver: Send + Sync {
     async fn resolve(&self, request: &ResolveRequest) -> Result<ResolvedSecret>;
 }
+
+pub struct WriteRequest {
+    pub params: HashMap<String, toml::Value>,
+    pub value: String,
+}
+
+/// Optional trait for providers that support writing secrets.
+/// Not all providers support this (e.g., `env` is read-only).
+#[async_trait]
+pub trait SecretWriter: Send + Sync {
+    async fn write(&self, request: &WriteRequest) -> Result<()>;
+}

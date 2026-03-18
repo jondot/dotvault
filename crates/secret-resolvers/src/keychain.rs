@@ -1,4 +1,4 @@
-use crate::{ResolveRequest, ResolvedSecret, ResolverError, Result, SecretResolver};
+use crate::{ResolveRequest, ResolvedSecret, ResolverError, Result, SecretResolver, SecretWriter, WriteRequest};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
@@ -27,5 +27,24 @@ impl SecretResolver for KeychainResolver {
             ResolverError::ResolutionFailed(format!("keychain lookup failed for '{item_name}': {e}"))
         })?;
         Ok(ResolvedSecret { value, ttl: None })
+    }
+}
+
+#[async_trait]
+impl SecretWriter for KeychainResolver {
+    async fn write(&self, request: &WriteRequest) -> Result<()> {
+        let item_name = request
+            .params
+            .get("ref")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ResolverError::MissingParam("ref".to_string()))?;
+        let entry = keyring::Entry::new(&self.service, item_name)
+            .map_err(|e| ResolverError::ResolutionFailed(format!("keychain entry error: {e}")))?;
+        entry.set_password(&request.value).map_err(|e| {
+            ResolverError::ResolutionFailed(format!(
+                "keychain write failed for '{item_name}': {e}"
+            ))
+        })?;
+        Ok(())
     }
 }

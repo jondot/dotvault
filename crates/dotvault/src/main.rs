@@ -3,6 +3,7 @@ mod config;
 mod export;
 mod resolve;
 mod run;
+mod set;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -54,6 +55,21 @@ enum Commands {
         /// Field name for providers that need it
         #[arg(long)]
         field: Option<String>,
+    },
+    /// Write a secret value into a vault provider
+    Set {
+        /// Provider name (interactive if omitted)
+        #[arg(long)]
+        provider: Option<String>,
+        /// Provider reference/path (interactive if omitted)
+        #[arg(long, alias = "ref")]
+        reference: Option<String>,
+        /// Field name for providers that need it
+        #[arg(long)]
+        field: Option<String>,
+        /// Secret value (interactive hidden input if omitted)
+        #[arg(long)]
+        value: Option<String>,
     },
 }
 
@@ -143,6 +159,17 @@ async fn run() -> Result<()> {
                 .dir
                 .unwrap_or_else(|| std::env::current_dir().unwrap());
             add::add_secret(&dir, local, name, provider, reference, field)?;
+        }
+        Commands::Set {
+            provider,
+            reference,
+            field,
+            value,
+        } => {
+            let dir = cli
+                .dir
+                .unwrap_or_else(|| std::env::current_dir().unwrap());
+            set::set_secret(&dir, provider, reference, field, value).await?;
         }
         Commands::Hook { shell } => {
             let snippet = match shell {

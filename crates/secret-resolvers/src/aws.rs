@@ -1,4 +1,4 @@
-use crate::{ResolveRequest, ResolvedSecret, ResolverError, Result, SecretResolver};
+use crate::{ResolveRequest, ResolvedSecret, ResolverError, Result, SecretResolver, SecretWriter, WriteRequest};
 use async_trait::async_trait;
 use aws_config::BehaviorVersion;
 use std::collections::HashMap;
@@ -93,6 +93,63 @@ impl SecretResolver for AwsResolver {
                 .to_string();
 
             Ok(ResolvedSecret { value, ttl: None })
+        } else {
+            Err(ResolverError::ConfigError(format!(
+                "unknown ref prefix in '{}': expected 'sm://' or 'ssm://'",
+                reference
+            )))
+        }
+    }
+}
+
+#[async_trait]
+impl SecretWriter for AwsResolver {
+    async fn write(&self, request: &WriteRequest) -> Result<()> {
+        let reference = request
+            .params
+            .get("ref")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ResolverError::MissingParam("ref".to_string()))?;
+
+        if let Some(secret_id) = reference.strip_prefix("sm://") {
+            // Try to update existing secret, fall back to create
+            let result = self
+                .sm_client
+                .put_secret_value()
+                .secret_id(secret_id)
+                .secret_string(&request.value)
+                .send()
+                .await;
+
+            match result {
+                Ok(_) => Ok(()),
+                Err(_) => {
+                    // Secret might not exist yet, try to create it
+                    self.sm_client
+                        .create_secret()
+                        .name(secret_id)
+                        .secret_string(&request.value)
+                        .send()
+                        .await
+                        .map_err(|e| {
+                            ResolverError::ResolutionFailed(format!("AWS SM create: {e}"))
+                        })?;
+                    Ok(())
+                }
+            }
+        } else if let Some(param_name) = reference.strip_prefix("ssm://") {
+            self.ssm_client
+                .put_parameter()
+                .name(param_name)
+                .value(&request.value)
+                .r#type(aws_sdk_ssm::types::ParameterType::SecureString)
+                .overwrite(true)
+                .send()
+                .await
+                .map_err(|e| {
+                    ResolverError::ResolutionFailed(format!("AWS SSM put: {e}"))
+                })?;
+            Ok(())
         } else {
             Err(ResolverError::ConfigError(format!(
                 "unknown ref prefix in '{}': expected 'sm://' or 'ssm://'",

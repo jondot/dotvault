@@ -1,4 +1,4 @@
-use crate::{ResolveRequest, ResolvedSecret, ResolverError, Result, SecretResolver};
+use crate::{ResolveRequest, ResolvedSecret, ResolverError, Result, SecretResolver, SecretWriter, WriteRequest};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
@@ -56,5 +56,53 @@ impl SecretResolver for OnePasswordResolver {
         }
 
         Ok(ResolvedSecret { value, ttl: None })
+    }
+}
+
+#[async_trait]
+impl SecretWriter for OnePasswordResolver {
+    async fn write(&self, request: &WriteRequest) -> Result<()> {
+        let reference = request
+            .params
+            .get("ref")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ResolverError::MissingParam("ref".to_string()))?;
+
+        // Parse op://vault/item/field
+        let parts: Vec<&str> = reference
+            .strip_prefix("op://")
+            .ok_or_else(|| {
+                ResolverError::ConfigError("1password ref must start with op://".into())
+            })?
+            .splitn(3, '/')
+            .collect();
+
+        if parts.len() < 3 {
+            return Err(ResolverError::ConfigError(
+                "1password ref must be op://vault/item/field".into(),
+            ));
+        }
+
+        let (vault, item, field) = (parts[0], parts[1], parts[2]);
+        let field_assignment = format!("{field}={}", request.value);
+
+        let mut cmd = tokio::process::Command::new(&self.op_path);
+        cmd.args(["item", "edit", item, "--vault", vault, &field_assignment]);
+        if let Some(account) = &self.account {
+            cmd.args(["--account", account]);
+        }
+
+        let output = cmd.output().await.map_err(|e| {
+            ResolverError::ResolutionFailed(format!("failed to run op CLI: {e}"))
+        })?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(ResolverError::ResolutionFailed(format!(
+                "op item edit: {stderr}"
+            )));
+        }
+
+        Ok(())
     }
 }

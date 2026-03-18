@@ -1,4 +1,4 @@
-use crate::{ResolveRequest, ResolvedSecret, ResolverError, Result, SecretResolver};
+use crate::{ResolveRequest, ResolvedSecret, ResolverError, Result, SecretResolver, SecretWriter, WriteRequest};
 use async_trait::async_trait;
 use reqwest::header::{HeaderMap, HeaderValue};
 use std::collections::HashMap;
@@ -100,6 +100,49 @@ impl SecretResolver for HashiCorpResolver {
             .to_string();
 
         Ok(ResolvedSecret { value, ttl: None })
+    }
+}
+
+#[async_trait]
+impl SecretWriter for HashiCorpResolver {
+    async fn write(&self, request: &WriteRequest) -> Result<()> {
+        let path = request
+            .params
+            .get("ref")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ResolverError::MissingParam("ref".to_string()))?;
+        let field = request
+            .params
+            .get("field")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| ResolverError::MissingParam("field".to_string()))?;
+
+        let url = format!("{}/v1/{}", self.address.trim_end_matches('/'), path);
+
+        // For KV v2, we need to wrap in {"data": {...}}
+        let body = serde_json::json!({
+            "data": { field: request.value }
+        });
+
+        let resp = self
+            .client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| {
+                ResolverError::ResolutionFailed(format!("Vault write failed: {e}"))
+            })?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(ResolverError::ResolutionFailed(format!(
+                "Vault returned {status}: {body}"
+            )));
+        }
+
+        Ok(())
     }
 }
 
