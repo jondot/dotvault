@@ -3,6 +3,8 @@ pub use provider::*;
 
 #[cfg(feature = "env")]
 pub mod env;
+#[cfg(feature = "env")]
+pub use env::EnvResolver;
 
 #[cfg(feature = "onepassword")]
 pub mod onepassword;
