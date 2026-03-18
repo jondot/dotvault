@@ -1,0 +1,20 @@
+[package]
+name = "dotvault"
+version = "0.1.0"
+edition = "2021"
+description = "Resolve secrets from pluggable backends into your dev environment"
+license = "MIT"
+
+[[bin]]
+name = "dotvault"
+path = "src/main.rs"
+
+[dependencies]
+secret-resolvers = { path = "../secret-resolvers", features = ["env"] }
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+toml = "0.8"
+serde = { version = "1", features = ["derive"] }
+dirs = "6"
+anyhow = "1"
+futures = "0.3"
