@@ -148,6 +148,7 @@ pub struct ResolvedSecret {
 - `params` is an opaque bag of key-value pairs. Each provider defines what keys it expects.
 - `ttl` is optional — dotvault ignores it, keyzero uses it for caching/refresh.
 - Constructors are per-provider (not part of the trait). Each provider's `new()` takes a `HashMap<String, toml::Value>` for backend-level config.
+- Provider config names (e.g. `1password` in TOML) are mapped to Rust module names (e.g. `onepassword`) in the provider registry. The registry handles this translation.
 
 ### Provider Catalog
 
@@ -235,7 +236,7 @@ Equivalent hooks for bash (PROMPT_COMMAND) and fish (variable event).
 1. Determine config file: if `.dotvault.local.toml` exists, use it. Otherwise use `.dotvault.toml`.
 2. Parse the TOML config.
 3. Instantiate providers: for each unique provider name in `[secrets]`, create an instance with config from `[providers.<name>]` (project-level, falling back to `~/.config/dotvault/config.toml`).
-4. Resolve all secrets: for each entry in `[secrets]`, call the provider's `resolve()` with the entry's fields mapped into `ResolveRequest { params }`.
+4. Resolve all secrets concurrently: for each entry in `[secrets]`, call the provider's `resolve()` with the entry's fields mapped into `ResolveRequest { params }`. Use `futures::join_all` to resolve in parallel — important for providers that make HTTP calls or shell out to CLIs.
 5. If any secret fails to resolve, print a clear error per secret and exit non-zero. No partial injection.
 6. Deliver secrets: either inject into subprocess env (`run`) or print `export` lines (`export`).
 
