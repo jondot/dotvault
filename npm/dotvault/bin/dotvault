@@ -1,0 +1,61 @@
+#!/usr/bin/env node
+
+const { spawnSync } = require("child_process");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+
+function getBinaryPath() {
+  if (process.env.DOTVAULT_BINARY) {
+    return process.env.DOTVAULT_BINARY;
+  }
+
+  const platform = process.platform;
+  const arch = os.arch();
+
+  const PLATFORMS = {
+    "darwin-arm64": "@jondot/dotvault-cli-darwin-arm64",
+    "linux-x64": "@jondot/dotvault-cli-linux-x64",
+    "linux-arm64": "@jondot/dotvault-cli-linux-arm64",
+  };
+
+  const key = `${platform}-${arch}`;
+  const pkg = PLATFORMS[key];
+
+  if (!pkg) {
+    console.error(
+      `Unsupported platform: ${platform}-${arch}. ` +
+        `Supported: ${Object.keys(PLATFORMS).join(", ")}`
+    );
+    process.exit(1);
+  }
+
+  const binaryName = "dotvault";
+
+  try {
+    const pkgDir = path.dirname(require.resolve(`${pkg}/package.json`));
+    return path.join(pkgDir, binaryName);
+  } catch {
+    console.error(
+      `Could not find the dotvault binary for ${platform}-${arch}.\n` +
+        `The package ${pkg} does not appear to be installed.\n` +
+        `Try reinstalling: npm i -g @jondot/dotvault`
+    );
+    process.exit(1);
+  }
+}
+
+const binary = getBinaryPath();
+
+try {
+  fs.chmodSync(binary, 0o755);
+} catch {}
+
+const result = spawnSync(binary, process.argv.slice(2), { stdio: "inherit" });
+
+if (result.error) {
+  console.error(`Failed to execute dotvault: ${result.error.message}`);
+  process.exit(1);
+}
+
+process.exit(result.status ?? 1);
