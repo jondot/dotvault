@@ -38,3 +38,5 @@ pub use gcp::GcpResolver;
 
 #[cfg(feature = "keyzero")]
 pub mod keyzero;
+#[cfg(feature = "keyzero")]
+pub use keyzero::KeyzeroResolver;
