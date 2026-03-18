@@ -23,6 +23,8 @@ pub use age::AgeResolver;
 
 #[cfg(feature = "aws")]
 pub mod aws;
+#[cfg(feature = "aws")]
+pub use aws::AwsResolver;
 
 #[cfg(feature = "hashicorp")]
 pub mod hashicorp;
