@@ -15,6 +15,7 @@ tokio = { version = "1", features = ["process"] }
 
 # Provider-specific dependencies (behind feature flags)
 keyring = { version = "3", optional = true, features = ["apple-native", "linux-native"] }
+security-framework = { version = "3", optional = true }
 age = { version = "0.11", optional = true }
 aws-config = { version = "1", optional = true }
 aws-sdk-secretsmanager = { version = "1", optional = true }
@@ -38,7 +39,7 @@ base64 = "0.22"
 default = ["env"]
 env = []
 onepassword = []
-keychain = ["dep:keyring"]
+keychain = ["dep:keyring", "dep:security-framework"]
 age-provider = ["dep:age"]
 aws = ["dep:aws-config", "dep:aws-sdk-secretsmanager", "dep:aws-sdk-ssm"]
 hashicorp = ["dep:reqwest"]
