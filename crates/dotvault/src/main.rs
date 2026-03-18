@@ -1,3 +1,4 @@
+mod add;
 mod config;
 mod export;
 mod resolve;
@@ -35,6 +36,24 @@ enum Commands {
     Hook {
         #[arg(long, value_enum)]
         shell: Shell,
+    },
+    /// Add a secret mapping to the config file
+    Add {
+        /// Write to .dotvault.local.toml instead of .dotvault.toml
+        #[arg(long)]
+        local: bool,
+        /// Env var name (interactive if omitted)
+        #[arg(long)]
+        name: Option<String>,
+        /// Provider name (interactive if omitted)
+        #[arg(long)]
+        provider: Option<String>,
+        /// Provider reference/path (interactive if omitted)
+        #[arg(long, alias = "ref")]
+        reference: Option<String>,
+        /// Field name for providers that need it
+        #[arg(long)]
+        field: Option<String>,
     },
 }
 
@@ -112,6 +131,18 @@ async fn run() -> Result<()> {
 "#;
             std::fs::write(&target, starter)?;
             println!("created {}", target.display());
+        }
+        Commands::Add {
+            local,
+            name,
+            provider,
+            reference,
+            field,
+        } => {
+            let dir = cli
+                .dir
+                .unwrap_or_else(|| std::env::current_dir().unwrap());
+            add::add_secret(&dir, local, name, provider, reference, field)?;
         }
         Commands::Hook { shell } => {
             let snippet = match shell {
