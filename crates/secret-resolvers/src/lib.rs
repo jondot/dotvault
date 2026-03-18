@@ -28,6 +28,8 @@ pub use aws::AwsResolver;
 
 #[cfg(feature = "hashicorp")]
 pub mod hashicorp;
+#[cfg(feature = "hashicorp")]
+pub use hashicorp::HashiCorpResolver;
 
 #[cfg(feature = "gcp")]
 pub mod gcp;
