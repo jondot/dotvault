@@ -57,7 +57,7 @@ enum Commands {
         field: Option<String>,
     },
     /// Write a secret value into a vault provider
-    Set {
+    Put {
         /// Provider name (interactive if omitted)
         #[arg(long)]
         provider: Option<String>,
@@ -160,7 +160,7 @@ async fn run() -> Result<()> {
                 .unwrap_or_else(|| std::env::current_dir().unwrap());
             add::add_secret(&dir, local, name, provider, reference, field)?;
         }
-        Commands::Set {
+        Commands::Put {
             provider,
             reference,
             field,

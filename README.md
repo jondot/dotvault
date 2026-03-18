@@ -128,10 +128,10 @@ dotvault add
 dotvault add --name OPENAI_API_KEY --provider 1password --ref "op://Engineering/OpenAI/api-key"
 
 # Write a secret value into a vault (interactive)
-dotvault set
+dotvault put
 
 # Write a secret value into a vault (non-interactive)
-dotvault set --provider 1password --ref "op://Engineering/OpenAI/api-key" --value "sk-proj-abc123"
+dotvault put --provider 1password --ref "op://Engineering/OpenAI/api-key" --value "sk-proj-abc123"
 
 # Create a starter config
 dotvault init
@@ -154,12 +154,12 @@ Reference: op://Engineering/OpenAI/api-key
 
 Use `--local` to write to `.dotvault.local.toml` instead.
 
-### `dotvault set`
+### `dotvault put`
 
 VP creates a new OpenAI token and wants to store it in the team vault:
 
 ```
-$ dotvault set
+$ dotvault put
 Provider: 1password
 Reference: op://Engineering/OpenAI/api-key
 Value (hidden): ****

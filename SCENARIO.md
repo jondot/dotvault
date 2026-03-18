@@ -162,7 +162,7 @@ Uses the real macOS Keychain. No external tools needed.
 cd /tmp/dotvault-test && mkdir s6 && cd s6
 
 # Store a secret in the keychain
-$DV set --provider keychain --ref test-api-key --value "keychain-secret-value"
+$DV put --provider keychain --ref test-api-key --value "keychain-secret-value"
 # Expected: "✓ Stored secret at test-api-key via keychain"
 # Note: macOS may show a keychain access prompt — allow it
 
@@ -180,7 +180,7 @@ $DV run -- sh -c 'echo $API_KEY'
 # Expected: keychain-secret-value
 
 # Store another secret interactively
-$DV set
+$DV put
 # Interactive prompts:
 #   Provider: (select "keychain")
 #   Reference: test-db-password
@@ -213,7 +213,7 @@ curl -s http://localhost:8200/v1/sys/health | grep initialized
 cd /tmp/dotvault-test && mkdir s7 && cd s7
 
 # Store a secret via dotvault set
-$DV set \
+$DV put \
   --provider hashicorp \
   --ref "secret/data/myapp" \
   --field "api_key" \
@@ -222,7 +222,7 @@ $DV set \
 export VAULT_TOKEN=test-root-token
 
 # Retry with token set
-$DV set \
+$DV put \
   --provider hashicorp \
   --ref "secret/data/myapp" \
   --field "api_key" \
@@ -251,7 +251,7 @@ $DV run -- sh -c 'echo "Vault secret: $API_KEY"'
 # Expected: Vault secret: vault-stored-secret-123
 
 # Store a second field
-$DV set \
+$DV put \
   --provider hashicorp \
   --ref "secret/data/myapp" \
   --field "db_password" \
@@ -289,7 +289,7 @@ export AWS_SECRET_ACCESS_KEY=test
 export AWS_DEFAULT_REGION=us-east-1
 
 # Store a secret in Secrets Manager via dotvault set
-$DV set \
+$DV put \
   --provider aws \
   --ref "sm://myapp/openai-key" \
   --value "sk-aws-stored-key-456"
@@ -441,7 +441,7 @@ $DV init 2>&1
 # Expected: error about .dotvault.toml already exists
 
 # Set with unsupported write provider
-$DV set --provider env --ref something --value test 2>&1
+$DV put --provider env --ref something --value test 2>&1
 # Expected: error about provider not supporting writing
 ```
 
@@ -461,7 +461,7 @@ $DV add --name OPENAI_API_KEY --provider keychain --ref team-openai-key
 $DV add --name DATABASE_URL --provider env --ref SHARED_DB_URL
 
 # VP stores the actual OpenAI key in the keychain
-$DV set --provider keychain --ref team-openai-key --value "sk-proj-team-key-from-vp"
+$DV put --provider keychain --ref team-openai-key --value "sk-proj-team-key-from-vp"
 
 # VP commits .dotvault.toml (simulated: just show it)
 cat .dotvault.toml
@@ -495,7 +495,7 @@ $DV export
 # Expected: both OPENAI_API_KEY and DATABASE_URL
 
 # --- VP rotates the key ---
-$DV set --provider keychain --ref team-openai-key --value "sk-proj-NEW-rotated-key"
+$DV put --provider keychain --ref team-openai-key --value "sk-proj-NEW-rotated-key"
 
 # --- Developer without local override gets new key automatically ---
 # (remove local override to simulate)
