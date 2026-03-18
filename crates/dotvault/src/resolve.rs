@@ -85,9 +85,15 @@ async fn build_providers(
 
 async fn create_provider(
     name: &str,
-    config: HashMap<String, toml::Value>,
+    mut config: HashMap<String, toml::Value>,
 ) -> Result<Arc<dyn SecretResolver>> {
-    match name {
+    // Extract type from config, falling back to provider name
+    let provider_type = config
+        .remove("type")
+        .and_then(|v| v.as_str().map(String::from))
+        .unwrap_or_else(|| name.to_string());
+
+    match provider_type.as_str() {
         "env" => {
             use secret_resolvers::EnvResolver;
             let r = EnvResolver::new(config)
@@ -137,7 +143,7 @@ async fn create_provider(
                 .map_err(|e| anyhow!("failed to create keyzero provider: {}", e))?;
             Ok(Arc::new(r))
         }
-        other => Err(anyhow!("unknown provider '{}'", other)),
+        other => Err(anyhow!("unknown provider type '{}'", other)),
     }
 }
 
@@ -182,6 +188,36 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_resolve_with_named_provider() {
+        std::env::set_var("TEST_NAMED_PROVIDER_VAR", "named-value");
+
+        let mut providers = HashMap::new();
+        let mut my_env_config = HashMap::new();
+        my_env_config.insert("type".to_string(), toml::Value::String("env".to_string()));
+        providers.insert("my-custom-env".to_string(), my_env_config);
+
+        let mut secrets = HashMap::new();
+        secrets.insert(
+            "MY_SECRET".to_string(),
+            SecretEntry {
+                provider: "my-custom-env".to_string(),
+                extra: {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "ref".to_string(),
+                        toml::Value::String("TEST_NAMED_PROVIDER_VAR".to_string()),
+                    );
+                    m
+                },
+            },
+        );
+
+        let config = DotVaultConfig { providers, secrets };
+        let resolved = resolve_all(&config).await.unwrap();
+        assert_eq!(resolved["MY_SECRET"], "named-value");
+    }
+
+    #[tokio::test]
     async fn test_error_on_unknown_provider() {
         let mut secrets = HashMap::new();
         secrets.insert(
@@ -200,6 +236,6 @@ mod tests {
         let result = resolve_all(&config).await;
         assert!(result.is_err());
         let msg = result.unwrap_err().to_string();
-        assert!(msg.contains("unknown provider"));
+        assert!(msg.contains("unknown provider type"));
     }
 }

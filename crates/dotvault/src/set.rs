@@ -105,9 +105,15 @@ fn load_provider_config(
 
 async fn create_writer(
     name: &str,
-    config: HashMap<String, toml::Value>,
+    mut config: HashMap<String, toml::Value>,
 ) -> Result<Box<dyn SecretWriter>> {
-    match name {
+    // Extract type from config, falling back to provider name
+    let provider_type = config
+        .remove("type")
+        .and_then(|v| v.as_str().map(String::from))
+        .unwrap_or_else(|| name.to_string());
+
+    match provider_type.as_str() {
         "1password" => Ok(Box::new(
             secret_resolvers::OnePasswordResolver::new(config)
                 .map_err(|e| anyhow::anyhow!("failed to create 1password provider: {e}"))?,
@@ -126,7 +132,7 @@ async fn create_writer(
                 .map_err(|e| anyhow::anyhow!("failed to create aws provider: {e}"))?,
         )),
         other => bail!(
-            "Provider '{other}' does not support writing. Supported: {}",
+            "Provider type '{other}' does not support writing. Supported: {}",
             WRITABLE_PROVIDERS.join(", ")
         ),
     }
