@@ -121,12 +121,52 @@ dotvault run -- npm start
 # Print export statements (for shell eval)
 dotvault export
 
+# Add a secret mapping (interactive)
+dotvault add
+
+# Add a secret mapping (non-interactive)
+dotvault add --name OPENAI_API_KEY --provider 1password --ref "op://Engineering/OpenAI/api-key"
+
+# Write a secret value into a vault (interactive)
+dotvault set
+
+# Write a secret value into a vault (non-interactive)
+dotvault set --provider 1password --ref "op://Engineering/OpenAI/api-key" --value "sk-proj-abc123"
+
 # Create a starter config
 dotvault init
 
 # Print shell hook for auto-loading
 dotvault hook --shell zsh    # or bash, fish
 ```
+
+### `dotvault add`
+
+VP says "I put the OpenAI key under `op://Engineering/OpenAI/api-key` in 1Password." Developer runs:
+
+```
+$ dotvault add
+Env var name: OPENAI_API_KEY
+Provider: 1password
+Reference: op://Engineering/OpenAI/api-key
+✓ Added OPENAI_API_KEY to .dotvault.toml
+```
+
+Use `--local` to write to `.dotvault.local.toml` instead.
+
+### `dotvault set`
+
+VP creates a new OpenAI token and wants to store it in the team vault:
+
+```
+$ dotvault set
+Provider: 1password
+Reference: op://Engineering/OpenAI/api-key
+Value (hidden): ****
+✓ Stored secret at op://Engineering/OpenAI/api-key via 1password
+```
+
+Writable providers: `1password`, `keychain`, `aws`, `hashicorp`.
 
 ## Reference Formats
 
