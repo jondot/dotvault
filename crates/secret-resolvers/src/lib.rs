@@ -8,12 +8,18 @@ pub use env::EnvResolver;
 
 #[cfg(feature = "onepassword")]
 pub mod onepassword;
+#[cfg(feature = "onepassword")]
+pub use onepassword::OnePasswordResolver;
 
 #[cfg(feature = "keychain")]
 pub mod keychain;
+#[cfg(feature = "keychain")]
+pub use keychain::KeychainResolver;
 
 #[cfg(feature = "age-provider")]
 pub mod age;
+#[cfg(feature = "age-provider")]
+pub use age::AgeResolver;
 
 #[cfg(feature = "aws")]
 pub mod aws;
