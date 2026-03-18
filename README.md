@@ -35,6 +35,25 @@ dv run -- npm start
 
 No Docker, no external services, no accounts to create. Works on macOS and Linux out of the box.
 
+### Touch ID Protection (macOS)
+
+Want biometric authentication before secrets are released? Define a biometric provider:
+
+```toml
+[providers.secure]
+type = "keychain"
+biometric = true
+
+[secrets]
+OPENAI_API_KEY = { provider = "secure", ref = "team-openai-key" }
+```
+
+Touch ID will be required every time a secret is read. Store secrets with:
+
+```bash
+dv put --provider secure --ref team-openai-key --value "sk-proj-..."
+```
+
 ## Auto-Loading (Like direnv)
 
 Add the hook to your shell and secrets appear when you `cd` into the project:
@@ -100,7 +119,7 @@ Ordered by setup effort:
 
 | Provider | Backend | Setup | Config |
 |---|---|---|---|
-| `keychain` | OS keychain (macOS Keychain, Linux Secret Service) | **None** | `service` (optional) |
+| `keychain` | OS keychain (macOS Keychain, Linux Secret Service) | **None** | `service`, `biometric` |
 | `env` | Environment variables | **None** | — |
 | `1password` | 1Password CLI (`op`) | Install `op` CLI | `account`, `vault` |
 | `age` | age-encrypted files in repo | Install `age` CLI | `identity` (key file path) |
@@ -162,6 +181,35 @@ Personal overrides. **Completely replaces** `.dotvault.toml` when present — no
 OPENAI_API_KEY = { provider = "env", ref = "MY_PERSONAL_KEY" }
 DATABASE_URL = { provider = "env", ref = "DATABASE_URL" }
 ```
+
+### Named Providers
+
+You can have multiple instances of the same provider type by using the `type` field:
+
+```toml
+[providers.secure]
+type = "keychain"
+biometric = true
+
+[providers.keychain]
+type = "keychain"
+
+[providers.prod-vault]
+type = "hashicorp"
+address = "https://vault.prod.mycompany.com"
+
+[providers.staging-vault]
+type = "hashicorp"
+address = "https://vault.staging.mycompany.com"
+
+[secrets]
+PROD_KEY = { provider = "prod-vault", ref = "secret/data/myapp", field = "api_key" }
+STAGING_KEY = { provider = "staging-vault", ref = "secret/data/myapp", field = "api_key" }
+SENSITIVE_TOKEN = { provider = "secure", ref = "my-token" }
+DB_URL = { provider = "keychain", ref = "db-url" }
+```
+
+If no `type` field is set, the provider name is used as the type (backward compatible).
 
 ### `~/.config/dotvault/config.toml` (global)
 

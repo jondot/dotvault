@@ -294,7 +294,87 @@ API_KEY = { provider = "keychain", ref = "dotvault-demo-api-key" }
 }
 
 async function scenario7() {
-  header("Scenario 7: HashiCorp Vault (Docker)");
+  header("Scenario 7: Biometric Keychain (Touch ID)");
+  narrate("Stores a secret with Touch ID protection. macOS will prompt for fingerprint on read.");
+  setupDir("s7");
+
+  await waitForUser();
+
+  narrate("Create a config with a biometric-protected keychain provider");
+  writeFile(".dotvault.toml", `[providers.secure]
+type = "keychain"
+biometric = true
+
+[secrets]
+API_KEY = { provider = "secure", ref = "dotvault-demo-biometric-key" }
+`);
+
+  await waitForUser();
+
+  narrate("Store a secret with biometric protection via dv put");
+  narrate("(This creates a Touch ID-protected keychain entry)");
+  run(`${DV} put --provider secure --ref dotvault-demo-biometric-key --value "biometric-protected-secret"`);
+  showExpected("✓ Stored secret — Touch ID will be required to read it");
+
+  await waitForUser();
+
+  narrate("Now resolve it — macOS should prompt for Touch ID");
+  run(`${DV} export`);
+  showExpected("Touch ID prompt → export API_KEY='biometric-protected-secret'");
+
+  await waitForUser();
+
+  narrate("Run a command — Touch ID prompt again");
+  run(`${DV} run -- sh -c 'echo "Protected: $API_KEY"'`);
+  showExpected("Touch ID prompt → Protected: biometric-protected-secret");
+}
+
+async function scenario8() {
+  header("Scenario 8: Named Providers");
+  narrate("Multiple providers of the same type with different configs.");
+  setupDir("s8");
+
+  narrate("Create config with two keychain providers: regular and biometric");
+  writeFile(".dotvault.toml", `[providers.secure]
+type = "keychain"
+biometric = true
+
+[providers.regular]
+type = "keychain"
+
+[secrets]
+SENSITIVE_KEY = { provider = "secure", ref = "dotvault-demo-named-sensitive" }
+CASUAL_KEY = { provider = "regular", ref = "dotvault-demo-named-casual" }
+`);
+
+  await waitForUser();
+
+  narrate("Store secrets in both providers");
+  run(`${DV} put --provider secure --ref dotvault-demo-named-sensitive --value "needs-touch-id"`);
+  run(`${DV} put --provider regular --ref dotvault-demo-named-casual --value "no-touch-id-needed"`);
+
+  await waitForUser();
+
+  narrate("Resolve both — only SENSITIVE_KEY triggers Touch ID");
+  run(`${DV} export`);
+  showExpected("Touch ID for SENSITIVE_KEY only, both values resolved");
+
+  await waitForUser();
+
+  narrate("Show that named providers also work with other types");
+  narrate("(Using env provider with a custom name)");
+  writeFile(".dotvault.toml", `[providers.my-env]
+type = "env"
+
+[secrets]
+CUSTOM = { provider = "my-env", ref = "HOME" }
+`);
+  run(`${DV} export`);
+  showExpected("export CUSTOM='<your home directory>'");
+}
+
+async function scenario9() {
+  header("Scenario 9: HashiCorp Vault (Docker)");
   narrate("Spins up a real Vault dev server in Docker.");
 
   await waitForUser();
@@ -348,9 +428,9 @@ API_KEY = { provider = "hashicorp", ref = "secret/data/myapp", field = "api_key"
   run("docker stop dotvault-vault && docker rm dotvault-vault");
 }
 
-async function scenario8() {
-  header("Scenario 8: Error handling");
-  setupDir("s8");
+async function scenario10() {
+  header("Scenario 10: Error handling");
+  setupDir("s10");
 
   narrate("No config file:");
   run(`${DV} export`, { expectFail: true });
@@ -388,10 +468,10 @@ KEY = { provider = "env", ref = "THIS_VAR_DOES_NOT_EXIST_EVER" }
   showExpected("Error about provider not supporting writing");
 }
 
-async function scenario9() {
-  header("Scenario 9: The full team workflow");
+async function scenario11() {
+  header("Scenario 11: The full team workflow");
   narrate("VP R&D creates project → stores secrets → developer uses them → VP rotates → dev gets new value.");
-  setupDir("s9");
+  setupDir("s11");
 
   narrate("\n--- VP R&D's machine ---\n");
 
@@ -476,12 +556,14 @@ async function main() {
     ["Scenario 1", "Basic env provider", scenario1],
     ["Scenario 2", "Multiple secrets", scenario2],
     ["Scenario 3", "Local replaces shared", scenario3],
-    ["Scenario 4", "dotvault add", scenario4],
-    ["Scenario 5", "dotvault add --local", scenario5],
+    ["Scenario 4", "dv add", scenario4],
+    ["Scenario 5", "dv add --local", scenario5],
     ["Scenario 6", "macOS Keychain", scenario6],
-    ["Scenario 7", "HashiCorp Vault (Docker)", scenario7],
-    ["Scenario 8", "Error handling", scenario8],
-    ["Scenario 9", "Full team workflow", scenario9],
+    ["Scenario 7", "Biometric Keychain (Touch ID)", scenario7],
+    ["Scenario 8", "Named Providers", scenario8],
+    ["Scenario 9", "HashiCorp Vault (Docker)", scenario9],
+    ["Scenario 10", "Error handling", scenario10],
+    ["Scenario 11", "Full team workflow", scenario11],
   ];
 
   console.log(`${BOLD}Scenarios:${RESET}`);
