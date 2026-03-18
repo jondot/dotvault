@@ -10,7 +10,7 @@ fn write_config(dir: &TempDir, name: &str, content: &str) {
 fn test_no_config_file_error() {
     let dir = TempDir::new().unwrap();
 
-    let mut cmd = Command::cargo_bin("dotvault").unwrap();
+    let mut cmd = Command::cargo_bin("dv").unwrap();
     cmd.args(["--dir", dir.path().to_str().unwrap(), "export"]);
 
     cmd.assert()
@@ -31,7 +31,7 @@ ref = "something"
 "#,
     );
 
-    let mut cmd = Command::cargo_bin("dotvault").unwrap();
+    let mut cmd = Command::cargo_bin("dv").unwrap();
     cmd.args(["--dir", dir.path().to_str().unwrap(), "export"]);
 
     cmd.assert()
@@ -52,7 +52,7 @@ ref = "DOTVAULT_DEFINITELY_NOT_SET_VARIABLE_XYZ_12345"
 "#,
     );
 
-    let mut cmd = Command::cargo_bin("dotvault").unwrap();
+    let mut cmd = Command::cargo_bin("dv").unwrap();
     cmd.args(["--dir", dir.path().to_str().unwrap(), "export"])
         .env_remove("DOTVAULT_DEFINITELY_NOT_SET_VARIABLE_XYZ_12345");
 

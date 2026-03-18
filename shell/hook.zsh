@@ -1,6 +1,6 @@
 _dotvault_hook() {
   if [[ -f .dotvault.toml ]] || [[ -f .dotvault.local.toml ]]; then
-    eval "$(dotvault export)"
+    eval "$(dv export)"
   fi
 }
 autoload -U add-zsh-hook

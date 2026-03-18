@@ -19,7 +19,7 @@ ref = "DOTVAULT_TEST_SRC_VAR"
 "#,
     );
 
-    let mut cmd = Command::cargo_bin("dotvault").unwrap();
+    let mut cmd = Command::cargo_bin("dv").unwrap();
     cmd.args(["--dir", dir.path().to_str().unwrap(), "export"])
         .env("DOTVAULT_TEST_SRC_VAR", "hello_export");
 
@@ -50,7 +50,7 @@ ref = "DOTVAULT_LOCAL_VAR"
 "#,
     );
 
-    let mut cmd = Command::cargo_bin("dotvault").unwrap();
+    let mut cmd = Command::cargo_bin("dv").unwrap();
     cmd.args(["--dir", dir.path().to_str().unwrap(), "export"])
         .env("DOTVAULT_LOCAL_VAR", "from_local")
         .env_remove("DOTVAULT_SHARED_VAR");
@@ -73,7 +73,7 @@ ref = "DOTVAULT_QUOTE_SRC"
 "#,
     );
 
-    let mut cmd = Command::cargo_bin("dotvault").unwrap();
+    let mut cmd = Command::cargo_bin("dv").unwrap();
     cmd.args(["--dir", dir.path().to_str().unwrap(), "export"])
         .env("DOTVAULT_QUOTE_SRC", "it's a test");
 

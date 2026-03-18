@@ -30,7 +30,7 @@ function getBinaryPath() {
     process.exit(1);
   }
 
-  const binaryName = "dotvault";
+  const binaryName = "dv";
 
   try {
     const pkgDir = path.dirname(require.resolve(`${pkg}/package.json`));

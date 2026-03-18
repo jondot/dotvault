@@ -4,7 +4,7 @@
   "description": "Resolve secrets from pluggable backends into your dev environment",
   "license": "MIT",
   "bin": {
-    "dotvault": "bin/dotvault"
+    "dv": "bin/dotvault"
   },
   "optionalDependencies": {
     "@jondot/dotvault-cli-darwin-arm64": "0.1.0",

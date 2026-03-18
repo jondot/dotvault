@@ -6,7 +6,7 @@ use tempfile::TempDir;
 fn test_init_creates_file() {
     let dir = TempDir::new().unwrap();
 
-    let mut cmd = Command::cargo_bin("dotvault").unwrap();
+    let mut cmd = Command::cargo_bin("dv").unwrap();
     cmd.args(["--dir", dir.path().to_str().unwrap(), "init"]);
 
     cmd.assert()
@@ -26,7 +26,7 @@ fn test_init_errors_if_exists() {
     let config_path = dir.path().join(".dotvault.toml");
     std::fs::write(&config_path, "# existing config\n").unwrap();
 
-    let mut cmd = Command::cargo_bin("dotvault").unwrap();
+    let mut cmd = Command::cargo_bin("dv").unwrap();
     cmd.args(["--dir", dir.path().to_str().unwrap(), "init"]);
 
     cmd.assert()

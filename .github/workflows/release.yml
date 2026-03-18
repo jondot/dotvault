@@ -16,15 +16,15 @@ jobs:
           - runner: macos-latest
             target: aarch64-apple-darwin
             npm_pkg: cli-darwin-arm64
-            binary: dotvault
+            binary: dv
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             npm_pkg: cli-linux-x64
-            binary: dotvault
+            binary: dv
           - runner: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             npm_pkg: cli-linux-arm64
-            binary: dotvault
+            binary: dv
             cross: true
 
     runs-on: ${{ matrix.runner }}

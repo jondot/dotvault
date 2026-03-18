@@ -19,7 +19,7 @@ ref = "DOTVAULT_RUN_SRC"
 "#,
     );
 
-    let mut cmd = Command::cargo_bin("dotvault").unwrap();
+    let mut cmd = Command::cargo_bin("dv").unwrap();
     cmd.args([
         "--dir",
         dir.path().to_str().unwrap(),
@@ -47,7 +47,7 @@ ref = "DOTVAULT_ARG_SRC"
 "#,
     );
 
-    let mut cmd = Command::cargo_bin("dotvault").unwrap();
+    let mut cmd = Command::cargo_bin("dv").unwrap();
     cmd.args([
         "--dir",
         dir.path().to_str().unwrap(),

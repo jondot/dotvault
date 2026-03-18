@@ -11,7 +11,7 @@ use config::DotVaultConfig;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "dotvault", about = "Resolve secrets from pluggable backends into your dev environment")]
+#[command(name = "dv", about = "Resolve secrets from pluggable backends into your dev environment")]
 struct Cli {
     /// Path to config file directory (defaults to current directory)
     #[arg(long, global = true)]
@@ -178,7 +178,7 @@ async fn run() -> Result<()> {
 # Add this to your ~/.zshrc
 dotvault_load() {
   if [ -f .dotvault.toml ] || [ -f .dotvault.local.toml ]; then
-    eval "$(dotvault export)"
+    eval "$(dv export)"
   fi
 }
 add-zsh-hook chpwd dotvault_load
@@ -189,7 +189,7 @@ dotvault_load"#
 # Add this to your ~/.bashrc
 dotvault_load() {
   if [ -f .dotvault.toml ] || [ -f .dotvault.local.toml ]; then
-    eval "$(dotvault export)"
+    eval "$(dv export)"
   fi
 }
 PROMPT_COMMAND="dotvault_load; $PROMPT_COMMAND"
@@ -200,7 +200,7 @@ dotvault_load"#
 # Add this to your ~/.config/fish/config.fish
 function dotvault_load --on-variable PWD
   if test -f .dotvault.toml; or test -f .dotvault.local.toml
-    dotvault export | source
+    dv export | source
   end
 end
 dotvault_load"#

@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from "fs";
 import { join } from "path";
 import { createInterface } from "readline";
 
-const DV = join(import.meta.dirname, "target/release/dotvault");
+const DV = join(import.meta.dirname, "target/release/dv");
 const BASE = "/tmp/dotvault-demo";
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
