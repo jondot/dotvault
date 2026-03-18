@@ -33,6 +33,8 @@ pub use hashicorp::HashiCorpResolver;
 
 #[cfg(feature = "gcp")]
 pub mod gcp;
+#[cfg(feature = "gcp")]
+pub use gcp::GcpResolver;
 
 #[cfg(feature = "keyzero")]
 pub mod keyzero;

@@ -20,6 +20,7 @@ aws-config = { version = "1", optional = true }
 aws-sdk-secretsmanager = { version = "1", optional = true }
 aws-sdk-ssm = { version = "1", optional = true }
 reqwest = { version = "0.12", features = ["json"], optional = true }
+base64 = { version = "0.22", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -41,6 +42,6 @@ keychain = ["dep:keyring"]
 age-provider = ["dep:age"]
 aws = ["dep:aws-config", "dep:aws-sdk-secretsmanager", "dep:aws-sdk-ssm"]
 hashicorp = ["dep:reqwest"]
-gcp = ["dep:reqwest"]
+gcp = ["dep:reqwest", "dep:base64"]
 keyzero = ["dep:reqwest"]
 all = ["env", "onepassword", "keychain", "age-provider", "aws", "hashicorp", "gcp", "keyzero"]
