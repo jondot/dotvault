@@ -1,0 +1,12 @@
+{
+  "name": "@jondot/dotvault-cli-linux-x64",
+  "version": "0.2.0",
+  "description": "dotvault binary for Linux x64",
+  "license": "MIT",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ]
+}

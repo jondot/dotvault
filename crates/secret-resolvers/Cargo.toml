@@ -1,0 +1,48 @@
+[package]
+name = "secret-resolvers"
+version = "0.2.0"
+edition = "2021"
+description = "Pluggable secret resolution from multiple backends"
+license = "MIT"
+
+[dependencies]
+async-trait = "0.1"
+toml = "0.8"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["process"] }
+
+# Provider-specific dependencies (behind feature flags)
+keyring = { version = "3", optional = true, features = ["apple-native", "linux-native"] }
+security-framework = { version = "3", optional = true }
+age = { version = "0.11", optional = true }
+aws-config = { version = "1", optional = true }
+aws-sdk-secretsmanager = { version = "1", optional = true }
+aws-sdk-ssm = { version = "1", optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"], optional = true }
+base64 = { version = "0.22", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+tempfile = "3"
+age = { version = "0.11", features = ["armor"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+aws-config = "1"
+aws-sdk-secretsmanager = "1"
+aws-sdk-ssm = "1"
+serde_json = "1"
+wiremock = "0.6"
+base64 = "0.22"
+
+[features]
+default = ["env"]
+env = []
+onepassword = []
+keychain = ["dep:keyring", "dep:security-framework"]
+age-provider = ["dep:age"]
+aws = ["dep:aws-config", "dep:aws-sdk-secretsmanager", "dep:aws-sdk-ssm"]
+hashicorp = ["dep:reqwest"]
+gcp = ["dep:reqwest", "dep:base64"]
+keyzero = ["dep:reqwest"]
+all = ["env", "onepassword", "keychain", "age-provider", "aws", "hashicorp", "gcp", "keyzero"]
