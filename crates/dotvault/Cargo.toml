@@ -1,6 +1,6 @@
 [package]
 name = "dotvault"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Resolve secrets from pluggable backends into your dev environment"
 license = "MIT"
