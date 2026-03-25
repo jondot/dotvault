@@ -973,7 +973,7 @@ dependencies = [
 
 [[package]]
 name = "dotvault"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2623,7 +2623,7 @@ dependencies = [
 
 [[package]]
 name = "secret-resolvers"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "age",
  "async-trait",

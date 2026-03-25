@@ -34,6 +34,10 @@ echo "  Updated crates/dotvault/Cargo.toml"
 sed -i '' "s/^version = \"$CURRENT\"/version = \"$VERSION\"/" "$REPO_ROOT/crates/secret-resolvers/Cargo.toml"
 echo "  Updated crates/secret-resolvers/Cargo.toml"
 
+# Update secret-resolvers dependency version in dotvault
+sed -i '' "s/secret-resolvers = { version = \"$CURRENT\"/secret-resolvers = { version = \"$VERSION\"/" "$REPO_ROOT/crates/dotvault/Cargo.toml"
+echo "  Updated secret-resolvers dependency in crates/dotvault/Cargo.toml"
+
 # Update platform packages
 for pkg in cli-darwin-arm64 cli-linux-x64 cli-linux-arm64; do
   PKGJSON="$REPO_ROOT/npm/$pkg/package.json"
