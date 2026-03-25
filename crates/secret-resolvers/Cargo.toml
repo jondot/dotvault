@@ -4,6 +4,11 @@ version = "0.2.0"
 edition = "2021"
 description = "Pluggable secret resolution from multiple backends"
 license = "MIT"
+repository = "https://github.com/jondot/dotvault"
+homepage = "https://github.com/jondot/dotvault"
+readme = "../../README.md"
+keywords = ["secrets", "vault", "env", "dotenv", "credentials"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 async-trait = "0.1"
