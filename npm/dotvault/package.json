@@ -1,14 +1,14 @@
 {
   "name": "@jondot/dotvault",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Resolve secrets from pluggable backends into your dev environment",
   "license": "MIT",
   "bin": {
     "dv": "bin/dotvault"
   },
   "optionalDependencies": {
-    "@jondot/dotvault-cli-darwin-arm64": "0.4.0",
-    "@jondot/dotvault-cli-linux-x64": "0.4.0",
-    "@jondot/dotvault-cli-linux-arm64": "0.4.0"
+    "@jondot/dotvault-cli-darwin-arm64": "0.5.0",
+    "@jondot/dotvault-cli-linux-x64": "0.5.0",
+    "@jondot/dotvault-cli-linux-arm64": "0.5.0"
   }
 }

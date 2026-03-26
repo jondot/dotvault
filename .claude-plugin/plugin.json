@@ -1,12 +1,21 @@
 {
   "name": "dotvault",
   "description": "Zero-friction secrets management — resolve secrets from pluggable backends into your dev environment",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "author": {
     "name": "Dotan Nahum"
   },
   "homepage": "https://github.com/jondot/dotvault",
   "repository": "https://github.com/jondot/dotvault",
   "license": "MIT",
-  "keywords": ["secrets", "vault", "env", "dotenv", "keychain", "1password", "aws", "credentials"]
+  "keywords": [
+    "secrets",
+    "vault",
+    "env",
+    "dotenv",
+    "keychain",
+    "1password",
+    "aws",
+    "credentials"
+  ]
 }
