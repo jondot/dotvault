@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            npm_pkg: cli-darwin-arm64
+            binary: dv
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            npm_pkg: cli-linux-x64
+            binary: dv
+          - runner: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            npm_pkg: cli-linux-arm64
+            binary: dv
+            cross: true
+
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+      - name: Build
+        run: cargo build --release -p dotvault --target ${{ matrix.target }}
+
+      - name: Copy binary to npm package
+        shell: bash
+        run: cp target/${{ matrix.target }}/release/${{ matrix.binary }} npm/${{ matrix.npm_pkg }}/
+
+      - name: Package release binary
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ${{ matrix.binary }}-${{ matrix.target }}.tar.gz ${{ matrix.binary }}
+
+      - name: Upload npm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.npm_pkg }}
+          path: npm/${{ matrix.npm_pkg }}/
+
+      - name: Upload release binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/${{ matrix.binary }}-${{ matrix.target }}.tar.gz
+
+  publish-crates:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish secret-resolvers to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p secret-resolvers --allow-dirty
+
+      - name: Wait for crates.io index update
+        run: sleep 30
+
+      - name: Publish dotvault to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish -p dotvault --allow-dirty
+
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare platform packages
+        run: |
+          for pkg in cli-darwin-arm64 cli-linux-x64 cli-linux-arm64; do
+            cp -r artifacts/$pkg/* npm/$pkg/
+          done
+
+      - name: Publish platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for pkg in cli-darwin-arm64 cli-linux-x64 cli-linux-arm64; do
+            npm publish ./npm/$pkg --access public
+          done
+
+      - name: Publish main package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish ./npm/dotvault --access public
+
+  release:
+    needs: [build, publish-crates, publish-npm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download release binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-binaries
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create ${{ github.ref_name }} --generate-notes release-binaries/*

@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/dotvault", "crates/secret-resolvers"]
+resolver = "2"

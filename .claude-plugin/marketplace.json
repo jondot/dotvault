@@ -1,0 +1,20 @@
+{
+  "name": "dotvault",
+  "description": "Zero-friction secrets management for dev environments",
+  "owner": {
+    "name": "Dotan Nahum"
+  },
+  "homepage": "https://github.com/jondot/dotvault",
+  "repository": "https://github.com/jondot/dotvault",
+  "plugins": [
+    {
+      "name": "dotvault",
+      "description": "Zero-friction secrets management — resolve secrets from pluggable backends into your dev environment",
+      "version": "0.3.0",
+      "source": "./",
+      "author": {
+        "name": "Dotan Nahum"
+      }
+    }
+  ]
+}

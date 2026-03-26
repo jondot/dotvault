@@ -1,0 +1,4 @@
+/target
+.dotvault.local.toml
+*.age
+docs/superpowers/
