@@ -53,6 +53,9 @@ enum Commands {
         /// Only check these secrets (comma-separated)
         #[arg(long, value_delimiter = ',')]
         only: Option<Vec<String>>,
+        /// Output format
+        #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
+        format: OutputFormat,
     },
     /// Create a starter .dotvault.toml in the current directory
     Init,
@@ -161,14 +164,17 @@ async fn run() -> Result<()> {
                 }
             }
         }
-        Commands::Status { only } => {
+        Commands::Status { only, format } => {
             let dir = cli
                 .dir
                 .unwrap_or_else(|| std::env::current_dir().unwrap());
             let mut config = DotVaultConfig::load_from_dir(&dir)?;
             config.merge_global_providers()?;
 
-            let all_ok = status::show_status(&dir, &config, only.as_deref()).await?;
+            let all_ok = match format {
+                OutputFormat::Text => status::show_status(&dir, &config, only.as_deref()).await?,
+                OutputFormat::Json => status::show_status_json(&config, only.as_deref()).await?,
+            };
             if !all_ok {
                 std::process::exit(1);
             }
