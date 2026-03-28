@@ -1,7 +1,7 @@
 use crate::config::{DotVaultConfig, SecretEntry};
 use anyhow::{anyhow, Result};
 use futures::future::join_all;
-use secret_resolvers::{ResolveRequest, SecretResolver, SecretString};
+use secret_resolvers::{ExposeSecret, ResolveRequest, SecretResolver, SecretString};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -27,6 +27,12 @@ pub async fn resolve_all(config: &DotVaultConfig) -> Result<HashMap<String, Secr
                 let resolved = provider.resolve(&request).await.map_err(|e| {
                     anyhow!("secret '{}': resolution failed: {}", secret_name, e)
                 })?;
+                if !entry.allow_empty && resolved.value.expose_secret().is_empty() {
+                    return Err(anyhow!(
+                        "secret '{}': resolved to empty value",
+                        secret_name
+                    ));
+                }
                 Ok::<(String, SecretString), anyhow::Error>((secret_name, resolved.value))
             }
         })
@@ -78,7 +84,13 @@ pub async fn find_missing(config: &DotVaultConfig) -> Result<Vec<(String, Secret
                 };
                 let request = build_request(&entry);
                 match provider.resolve(&request).await {
-                    Ok(_) => Ok(()),
+                    Ok(resolved) => {
+                        if !entry.allow_empty && resolved.value.expose_secret().is_empty() {
+                            Err((secret_name, entry))
+                        } else {
+                            Ok(())
+                        }
+                    }
                     Err(_) => Err((secret_name, entry)),
                 }
             }
@@ -256,6 +268,130 @@ mod tests {
         let config = DotVaultConfig { providers, secrets };
         let resolved = resolve_all(&config).await.unwrap();
         assert_eq!(resolved["MY_SECRET"].expose_secret(), "named-value");
+    }
+
+    #[tokio::test]
+    async fn test_resolve_rejects_empty_value_by_default() {
+        std::env::set_var("TEST_EMPTY_VAR", "");
+
+        let mut secrets = HashMap::new();
+        secrets.insert(
+            "MY_SECRET".to_string(),
+            SecretEntry {
+                provider: "env".to_string(),
+                allow_empty: false,
+                extra: {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "ref".to_string(),
+                        toml::Value::String("TEST_EMPTY_VAR".to_string()),
+                    );
+                    m
+                },
+            },
+        );
+
+        let config = DotVaultConfig {
+            providers: HashMap::new(),
+            secrets,
+        };
+
+        let result = resolve_all(&config).await;
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("empty value"));
+    }
+
+    #[tokio::test]
+    async fn test_resolve_accepts_empty_when_allow_empty() {
+        std::env::set_var("TEST_EMPTY_ALLOWED_VAR", "");
+
+        let mut secrets = HashMap::new();
+        secrets.insert(
+            "MY_SECRET".to_string(),
+            SecretEntry {
+                provider: "env".to_string(),
+                allow_empty: true,
+                extra: {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "ref".to_string(),
+                        toml::Value::String("TEST_EMPTY_ALLOWED_VAR".to_string()),
+                    );
+                    m
+                },
+            },
+        );
+
+        let config = DotVaultConfig {
+            providers: HashMap::new(),
+            secrets,
+        };
+
+        let result = resolve_all(&config).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap()["MY_SECRET"].expose_secret(), "");
+    }
+
+    #[tokio::test]
+    async fn test_find_missing_includes_empty_disallowed() {
+        std::env::set_var("TEST_FIND_EMPTY_VAR", "");
+
+        let mut secrets = HashMap::new();
+        secrets.insert(
+            "EMPTY_SECRET".to_string(),
+            SecretEntry {
+                provider: "env".to_string(),
+                allow_empty: false,
+                extra: {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "ref".to_string(),
+                        toml::Value::String("TEST_FIND_EMPTY_VAR".to_string()),
+                    );
+                    m
+                },
+            },
+        );
+
+        let config = DotVaultConfig {
+            providers: HashMap::new(),
+            secrets,
+        };
+
+        let missing = find_missing(&config).await.unwrap();
+        assert_eq!(missing.len(), 1);
+        assert_eq!(missing[0].0, "EMPTY_SECRET");
+    }
+
+    #[tokio::test]
+    async fn test_find_missing_excludes_empty_allowed() {
+        std::env::set_var("TEST_FIND_EMPTY_ALLOWED_VAR", "");
+
+        let mut secrets = HashMap::new();
+        secrets.insert(
+            "EMPTY_SECRET".to_string(),
+            SecretEntry {
+                provider: "env".to_string(),
+                allow_empty: true,
+                extra: {
+                    let mut m = HashMap::new();
+                    m.insert(
+                        "ref".to_string(),
+                        toml::Value::String("TEST_FIND_EMPTY_ALLOWED_VAR".to_string()),
+                    );
+                    m
+                },
+            },
+        );
+
+        let config = DotVaultConfig {
+            providers: HashMap::new(),
+            secrets,
+        };
+
+        let missing = find_missing(&config).await.unwrap();
+        assert!(missing.is_empty());
     }
 
     #[tokio::test]
