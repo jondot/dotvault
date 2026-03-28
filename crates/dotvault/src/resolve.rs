@@ -59,6 +59,44 @@ pub async fn resolve_all(config: &DotVaultConfig) -> Result<HashMap<String, Secr
     Ok(secrets)
 }
 
+/// Attempts to resolve all secrets, returning a list of (name, entry) pairs
+/// for secrets that failed to resolve (i.e., are "missing").
+pub async fn find_missing(config: &DotVaultConfig) -> Result<Vec<(String, SecretEntry)>> {
+    let providers = build_providers(config).await?;
+
+    let futures: Vec<_> = config
+        .secrets
+        .iter()
+        .map(|(secret_name, entry)| {
+            let providers = &providers;
+            let secret_name = secret_name.clone();
+            let entry = entry.clone();
+            async move {
+                let provider = match providers.get(&entry.provider) {
+                    Some(p) => p,
+                    None => return Err((secret_name, entry)),
+                };
+                let request = build_request(&entry);
+                match provider.resolve(&request).await {
+                    Ok(_) => Ok(()),
+                    Err(_) => Err((secret_name, entry)),
+                }
+            }
+        })
+        .collect();
+
+    let results = join_all(futures).await;
+
+    let mut missing = Vec::new();
+    for result in results {
+        if let Err((name, entry)) = result {
+            missing.push((name, entry));
+        }
+    }
+    missing.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(missing)
+}
+
 async fn build_providers(
     config: &DotVaultConfig,
 ) -> Result<HashMap<String, Arc<dyn SecretResolver>>> {
@@ -168,6 +206,7 @@ mod tests {
             "MY_SECRET".to_string(),
             SecretEntry {
                 provider: "env".to_string(),
+                allow_empty: false,
                 extra: {
                     let mut m = HashMap::new();
                     m.insert(
@@ -202,6 +241,7 @@ mod tests {
             "MY_SECRET".to_string(),
             SecretEntry {
                 provider: "my-custom-env".to_string(),
+                allow_empty: false,
                 extra: {
                     let mut m = HashMap::new();
                     m.insert(
@@ -225,6 +265,7 @@ mod tests {
             "SOME_SECRET".to_string(),
             SecretEntry {
                 provider: "nonexistent_provider".to_string(),
+                allow_empty: false,
                 extra: HashMap::new(),
             },
         );

@@ -14,6 +14,8 @@ pub struct DotVaultConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct SecretEntry {
     pub provider: String,
+    #[serde(default)]
+    pub allow_empty: bool,
     #[serde(flatten)]
     pub extra: HashMap<String, toml::Value>,
 }
@@ -539,6 +541,41 @@ ref = "PROD_KEY"
             cfg.secrets["API_KEY"].extra["ref"].as_str().unwrap(),
             "PROD_KEY"
         );
+    }
+
+    #[test]
+    fn test_allow_empty_defaults_to_false() {
+        let dir = TempDir::new().unwrap();
+        write_file(
+            &dir,
+            ".dotvault.toml",
+            r#"
+[secrets.MY_KEY]
+provider = "env"
+ref = "MY_VAR"
+"#,
+        );
+
+        let cfg = DotVaultConfig::load_from_dir(dir.path()).unwrap();
+        assert!(!cfg.secrets["MY_KEY"].allow_empty);
+    }
+
+    #[test]
+    fn test_allow_empty_explicit_true() {
+        let dir = TempDir::new().unwrap();
+        write_file(
+            &dir,
+            ".dotvault.toml",
+            r#"
+[secrets.MY_KEY]
+provider = "env"
+ref = "MY_VAR"
+allow_empty = true
+"#,
+        );
+
+        let cfg = DotVaultConfig::load_from_dir(dir.path()).unwrap();
+        assert!(cfg.secrets["MY_KEY"].allow_empty);
     }
 
     #[test]
