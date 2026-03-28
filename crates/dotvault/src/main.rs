@@ -5,6 +5,7 @@ mod resolve;
 mod run;
 mod set;
 mod status;
+mod validate;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -53,6 +54,12 @@ enum Commands {
         /// Only check these secrets (comma-separated)
         #[arg(long, value_delimiter = ',')]
         only: Option<Vec<String>>,
+        /// Output format
+        #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
+        format: OutputFormat,
+    },
+    /// Check config file for errors without resolving secrets
+    Validate {
         /// Output format
         #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
         format: OutputFormat,
@@ -176,6 +183,19 @@ async fn run() -> Result<()> {
                 OutputFormat::Json => status::show_status_json(&config, only.as_deref()).await?,
             };
             if !all_ok {
+                std::process::exit(1);
+            }
+        }
+        Commands::Validate { format } => {
+            let dir = cli
+                .dir
+                .unwrap_or_else(|| std::env::current_dir().unwrap());
+            let result = validate::validate_config(&dir)?;
+            match format {
+                OutputFormat::Text => print!("{}", validate::format_text(&result)),
+                OutputFormat::Json => println!("{}", validate::format_json(&result)?),
+            }
+            if !result.valid {
                 std::process::exit(1);
             }
         }
