@@ -3,8 +3,8 @@ use crate::resolve::resolve_all;
 use anyhow::Result;
 use secret_resolvers::ExposeSecret;
 
-pub async fn export_secrets(config: &DotVaultConfig) -> Result<String> {
-    let secrets = resolve_all(config, None).await?;
+pub async fn export_secrets(config: &DotVaultConfig, only: Option<&[String]>) -> Result<String> {
+    let secrets = resolve_all(config, only).await?;
 
     let mut lines: Vec<String> = secrets
         .into_iter()

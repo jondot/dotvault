@@ -11,26 +11,33 @@ use config::DotVaultConfig;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "dv", about = "Resolve secrets from pluggable backends into your dev environment")]
+#[command(name = "dv", about = "Resolve secrets from pluggable backends into your dev environment", version)]
 struct Cli {
     /// Path to config file directory (defaults to current directory)
     #[arg(long, global = true)]
     dir: Option<PathBuf>,
 
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
 enum Commands {
     /// Resolve secrets and run a subprocess with them injected as env vars
     Run {
+        /// Only resolve these secrets (comma-separated)
+        #[arg(long, value_delimiter = ',')]
+        only: Option<Vec<String>>,
         /// Command and arguments to run
         #[arg(trailing_var_arg = true, required = true)]
         cmd: Vec<String>,
     },
     /// Resolve secrets and print `export KEY='VALUE'` lines
-    Export,
+    Export {
+        /// Only resolve these secrets (comma-separated)
+        #[arg(long, value_delimiter = ',')]
+        only: Option<Vec<String>>,
+    },
     /// Create a starter .dotvault.toml in the current directory
     Init,
     /// Print the shell hook snippet for the specified shell
@@ -58,6 +65,9 @@ enum Commands {
     },
     /// Write a secret value into a vault provider
     Put {
+        /// Scan config for unresolvable secrets and interactively fill them
+        #[arg(long, conflicts_with_all = ["provider", "reference", "field", "value"])]
+        missing: bool,
         /// Provider name (interactive if omitted)
         #[arg(long)]
         provider: Option<String>,
@@ -91,8 +101,17 @@ async fn main() {
 async fn run() -> Result<()> {
     let cli = Cli::parse();
 
-    match cli.command {
-        Commands::Run { cmd } => {
+    let command = match cli.command {
+        Some(cmd) => cmd,
+        None => {
+            use clap::CommandFactory;
+            Cli::command().print_help()?;
+            return Ok(());
+        }
+    };
+
+    match command {
+        Commands::Run { only, cmd } => {
             let dir = cli
                 .dir
                 .unwrap_or_else(|| std::env::current_dir().unwrap());
@@ -100,16 +119,16 @@ async fn run() -> Result<()> {
             config.merge_global_providers()?;
 
             let (program, args) = cmd.split_first().expect("cmd must be non-empty");
-            run::run_command(&config, program, args).await?;
+            run::run_command(&config, program, args, only.as_deref()).await?;
         }
-        Commands::Export => {
+        Commands::Export { only } => {
             let dir = cli
                 .dir
                 .unwrap_or_else(|| std::env::current_dir().unwrap());
             let mut config = DotVaultConfig::load_from_dir(&dir)?;
             config.merge_global_providers()?;
 
-            let output = export::export_secrets(&config).await?;
+            let output = export::export_secrets(&config, only.as_deref()).await?;
             println!("{}", output);
         }
         Commands::Init => {
@@ -161,6 +180,7 @@ async fn run() -> Result<()> {
             add::add_secret(&dir, local, name, provider, reference, field)?;
         }
         Commands::Put {
+            missing,
             provider,
             reference,
             field,
@@ -169,7 +189,13 @@ async fn run() -> Result<()> {
             let dir = cli
                 .dir
                 .unwrap_or_else(|| std::env::current_dir().unwrap());
-            set::set_secret(&dir, provider, reference, field, value).await?;
+            if missing {
+                let mut config = DotVaultConfig::load_from_dir(&dir)?;
+                config.merge_global_providers()?;
+                set::put_missing(&dir, &config).await?;
+            } else {
+                set::set_secret(&dir, provider, reference, field, value).await?;
+            }
         }
         Commands::Hook { shell } => {
             let snippet = match shell {

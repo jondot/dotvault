@@ -3,8 +3,8 @@ use crate::resolve::resolve_all;
 use anyhow::Result;
 use secret_resolvers::ExposeSecret;
 
-pub async fn run_command(config: &DotVaultConfig, cmd: &str, args: &[String]) -> Result<()> {
-    let secrets = resolve_all(config, None).await?;
+pub async fn run_command(config: &DotVaultConfig, cmd: &str, args: &[String], only: Option<&[String]>) -> Result<()> {
+    let secrets = resolve_all(config, only).await?;
 
     let mut command = std::process::Command::new(cmd);
     command.args(args);
