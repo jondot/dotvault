@@ -9,6 +9,7 @@ fn create_fake_op(response_json: &str) -> tempfile::NamedTempFile {
     let mut f = tempfile::Builder::new().suffix(".sh").tempfile().unwrap();
     writeln!(f, "#!/bin/bash").unwrap();
     writeln!(f, "echo '{}'", response_json).unwrap();
+    f.as_file().sync_all().unwrap();
     let path = f.path().to_owned();
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
     f
@@ -19,6 +20,7 @@ fn create_failing_op() -> tempfile::NamedTempFile {
     writeln!(f, "#!/bin/bash").unwrap();
     writeln!(f, "echo 'item not found' >&2").unwrap();
     writeln!(f, "exit 1").unwrap();
+    f.as_file().sync_all().unwrap();
     let path = f.path().to_owned();
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
     f
