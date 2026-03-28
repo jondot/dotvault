@@ -132,7 +132,27 @@ impl DotVaultConfig {
         let shared_path = dir.join(".dotvault.toml");
 
         if local_path.exists() {
-            return Self::load(&local_path);
+            let config = Self::load(&local_path)?;
+
+            // Warn if local is out of sync with shared
+            if shared_path.exists() {
+                if let Ok(shared) = Self::load(&shared_path) {
+                    let (missing, extra) = Self::diff_secret_keys(&config, &shared);
+                    if !missing.is_empty() || !extra.is_empty() {
+                        eprintln!(
+                            "warning: .dotvault.local.toml is out of sync with .dotvault.toml"
+                        );
+                        if !missing.is_empty() {
+                            eprintln!("  missing from local: {}", missing.join(", "));
+                        }
+                        if !extra.is_empty() {
+                            eprintln!("  extra in local: {}", extra.join(", "));
+                        }
+                    }
+                }
+            }
+
+            return Ok(config);
         }
 
         if shared_path.exists() {
@@ -143,6 +163,27 @@ impl DotVaultConfig {
             "no config file found in {}: expected '.dotvault.local.toml' or '.dotvault.toml'",
             dir.display()
         )
+    }
+
+    /// Compares secret key names between local and shared configs.
+    /// Returns (missing_from_local, extra_in_local), both sorted.
+    pub fn diff_secret_keys(local: &Self, shared: &Self) -> (Vec<String>, Vec<String>) {
+        let local_keys: std::collections::HashSet<&String> = local.secrets.keys().collect();
+        let shared_keys: std::collections::HashSet<&String> = shared.secrets.keys().collect();
+
+        let mut missing: Vec<String> = shared_keys
+            .difference(&local_keys)
+            .map(|k| (*k).clone())
+            .collect();
+        missing.sort();
+
+        let mut extra: Vec<String> = local_keys
+            .difference(&shared_keys)
+            .map(|k| (*k).clone())
+            .collect();
+        extra.sort();
+
+        (missing, extra)
     }
 
     /// Reads `~/.config/dotvault/config.toml` and merges provider config into self.
@@ -576,6 +617,92 @@ allow_empty = true
 
         let cfg = DotVaultConfig::load_from_dir(dir.path()).unwrap();
         assert!(cfg.secrets["MY_KEY"].allow_empty);
+    }
+
+    #[test]
+    fn test_local_sync_warning_missing_keys() {
+        let dir = TempDir::new().unwrap();
+        write_file(
+            &dir,
+            ".dotvault.toml",
+            r#"
+[secrets]
+KEY_A = { provider = "env", ref = "A" }
+KEY_B = { provider = "env", ref = "B" }
+KEY_C = { provider = "env", ref = "C" }
+"#,
+        );
+        write_file(
+            &dir,
+            ".dotvault.local.toml",
+            r#"
+[secrets]
+KEY_A = { provider = "env", ref = "A" }
+"#,
+        );
+
+        let shared = DotVaultConfig::load(&dir.path().join(".dotvault.toml")).unwrap();
+        let local = DotVaultConfig::load(&dir.path().join(".dotvault.local.toml")).unwrap();
+        let (missing, extra) = DotVaultConfig::diff_secret_keys(&local, &shared);
+        assert_eq!(missing, vec!["KEY_B", "KEY_C"]);
+        assert!(extra.is_empty());
+    }
+
+    #[test]
+    fn test_local_sync_warning_extra_keys() {
+        let dir = TempDir::new().unwrap();
+        write_file(
+            &dir,
+            ".dotvault.toml",
+            r#"
+[secrets]
+KEY_A = { provider = "env", ref = "A" }
+"#,
+        );
+        write_file(
+            &dir,
+            ".dotvault.local.toml",
+            r#"
+[secrets]
+KEY_A = { provider = "env", ref = "A" }
+KEY_OLD = { provider = "env", ref = "OLD" }
+"#,
+        );
+
+        let shared = DotVaultConfig::load(&dir.path().join(".dotvault.toml")).unwrap();
+        let local = DotVaultConfig::load(&dir.path().join(".dotvault.local.toml")).unwrap();
+        let (missing, extra) = DotVaultConfig::diff_secret_keys(&local, &shared);
+        assert!(missing.is_empty());
+        assert_eq!(extra, vec!["KEY_OLD"]);
+    }
+
+    #[test]
+    fn test_local_sync_no_diff_when_in_sync() {
+        let dir = TempDir::new().unwrap();
+        write_file(
+            &dir,
+            ".dotvault.toml",
+            r#"
+[secrets]
+KEY_A = { provider = "env", ref = "A" }
+KEY_B = { provider = "keychain", ref = "b" }
+"#,
+        );
+        write_file(
+            &dir,
+            ".dotvault.local.toml",
+            r#"
+[secrets]
+KEY_A = { provider = "keychain", ref = "local-a" }
+KEY_B = { provider = "env", ref = "LOCAL_B" }
+"#,
+        );
+
+        let shared = DotVaultConfig::load(&dir.path().join(".dotvault.toml")).unwrap();
+        let local = DotVaultConfig::load(&dir.path().join(".dotvault.local.toml")).unwrap();
+        let (missing, extra) = DotVaultConfig::diff_secret_keys(&local, &shared);
+        assert!(missing.is_empty());
+        assert!(extra.is_empty());
     }
 
     #[test]
