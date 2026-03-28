@@ -1,3 +1,5 @@
+#![cfg(feature = "gcp")]
+
 use base64::Engine;
 use secret_resolvers::{GcpResolver, ResolveRequest, SecretResolver, ExposeSecret};
 use std::collections::HashMap;

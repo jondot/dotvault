@@ -1,3 +1,5 @@
+#![cfg(feature = "aws")]
+
 use secret_resolvers::{AwsResolver, SecretResolver, ResolveRequest, ExposeSecret};
 use std::collections::HashMap;
 

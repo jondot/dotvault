@@ -1,7 +1,8 @@
-use secret_resolvers::{AgeResolver, SecretResolver, ResolveRequest};
+#![cfg(feature = "age-provider")]
+
+use secret_resolvers::{AgeResolver, SecretResolver, ResolveRequest, ExposeSecret};
 use std::collections::HashMap;
 use std::io::Write;
-use age::secrecy::ExposeSecret;
 
 fn setup_age_encrypted_file(plaintext: &str) -> (tempfile::NamedTempFile, tempfile::NamedTempFile) {
     let identity = age::x25519::Identity::generate();

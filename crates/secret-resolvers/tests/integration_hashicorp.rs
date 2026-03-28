@@ -1,3 +1,5 @@
+#![cfg(feature = "hashicorp")]
+
 use secret_resolvers::{HashiCorpResolver, SecretResolver, ResolveRequest, ExposeSecret};
 use std::collections::HashMap;
 

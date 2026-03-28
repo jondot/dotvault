@@ -1,3 +1,5 @@
+#![cfg(feature = "onepassword")]
+
 use secret_resolvers::{OnePasswordResolver, SecretResolver, ResolveRequest, ExposeSecret};
 use std::collections::HashMap;
 use std::io::Write;

@@ -1,3 +1,5 @@
+#![cfg(feature = "keyzero")]
+
 use secret_resolvers::{KeyzeroResolver, ResolveRequest, SecretResolver, ExposeSecret};
 use std::collections::HashMap;
 use wiremock::matchers::{body_json, header, method, path};

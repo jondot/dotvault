@@ -1,3 +1,5 @@
+#![cfg(feature = "keychain")]
+
 use secret_resolvers::{KeychainResolver, SecretResolver, ResolveRequest, ExposeSecret};
 use std::collections::HashMap;
 
