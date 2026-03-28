@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dotvault - Secrets for developers</title>
+<meta name="description" content="No setup, no vendor lock-in, no secrets on disk. Runtime secret resolution from any vault into your dev environment.">
+<meta property="og:title" content="dotvault - Secrets for developers">
+<meta property="og:description" content="No setup, no vendor lock-in, no secrets on disk.">
+<meta property="og:type" content="website">
+<style>
+/* ── Reset & Base ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1117;
+  --bg-raised: #161b22;
+  --bg-surface: #1c2128;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-dim: #8b949e;
+  --text-muted: #656d76;
+  --green: #7ee787;
+  --blue: #79c0ff;
+  --purple: #d2a8ff;
+  --yellow: #e3b341;
+  --orange: #ffa657;
+  --red: #ff7b72;
+  --cyan: #a5d6ff;
+  --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, .mono { font-family: var(--mono); }
+
+/* ── Layout ───────────────────────────────────────── */
+.container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+section { padding: 80px 0; }
+
+/* ── Nav ──────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+nav .container {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 56px;
+}
+nav .logo {
+  font-family: var(--mono); font-weight: 700; font-size: 16px; color: var(--text);
+}
+nav .logo span { color: var(--green); }
+nav .links { display: flex; gap: 24px; font-size: 14px; }
+nav .links a { color: var(--text-dim); transition: color 0.15s; }
+nav .links a:hover { color: var(--text); text-decoration: none; }
+
+/* ── Hero ─────────────────────────────────────────── */
+.hero {
+  padding: 160px 0 100px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(126, 231, 135, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero h1 {
+  font-family: var(--mono);
+  font-size: clamp(40px, 7vw, 64px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.hero .tagline {
+  font-size: clamp(16px, 2.5vw, 20px);
+  color: var(--text-dim);
+  max-width: 520px;
+  margin: 0 auto 40px;
+  line-height: 1.5;
+}
+.hero .cta-row {
+  display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  margin-bottom: 48px;
+}
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: 8px;
+  font-size: 14px; font-weight: 500;
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.btn-primary {
+  background: var(--green); color: #0d1117;
+  border-color: var(--green); font-weight: 600;
+}
+.btn-primary:hover { background: #9bf0a0; text-decoration: none; }
+.btn-secondary { background: var(--bg-raised); color: var(--text-dim); }
+.btn-secondary:hover { color: var(--text); border-color: #484f58; text-decoration: none; }
+
+/* ── Terminal ─────────────────────────────────────── */
+.terminal {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-width: 620px;
+  margin: 0 auto;
+  overflow: hidden;
+  text-align: left;
+}
+.terminal-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+.terminal-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+}
+.terminal-dot:nth-child(1) { background: #ff5f57; }
+.terminal-dot:nth-child(2) { background: #febc2e; }
+.terminal-dot:nth-child(3) { background: #28c840; }
+.terminal-bar span {
+  flex: 1; text-align: center;
+  font-size: 12px; color: var(--text-muted);
+  font-family: var(--mono);
+}
+.terminal-body {
+  padding: 20px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.terminal-body .prompt { color: var(--green); }
+.terminal-body .cmd { color: var(--text); }
+.terminal-body .flag { color: var(--cyan); }
+.terminal-body .val { color: var(--orange); }
+.terminal-body .comment { color: var(--text-muted); }
+.terminal-body .output { color: var(--text-dim); }
+
+/* ── Section Headers ──────────────────────────────── */
+.section-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--green);
+  margin-bottom: 12px;
+}
+.section-title {
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+}
+.section-desc {
+  color: var(--text-dim);
+  font-size: 16px;
+  max-width: 560px;
+  margin-bottom: 48px;
+}
+
+/* ── Features Grid ────────────────────────────────── */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.feature-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  transition: border-color 0.15s;
+}
+.feature-card:hover { border-color: #484f58; }
+.feature-icon {
+  font-size: 20px;
+  margin-bottom: 12px;
+  display: inline-block;
+  width: 40px; height: 40px;
+  line-height: 40px; text-align: center;
+  background: var(--bg-surface);
+  border-radius: 8px;
+}
+.feature-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.feature-card p {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ── Quick Start ──────────────────────────────────── */
+.steps {
+  display: grid; gap: 24px;
+  counter-reset: step;
+}
+.step {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.step-num {
+  counter-increment: step;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--green);
+}
+.step-content h3 {
+  font-size: 15px; font-weight: 600; margin-bottom: 4px;
+}
+.step-content p {
+  font-size: 14px; color: var(--text-dim); margin-bottom: 10px;
+}
+.step-code {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: var(--mono);
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+/* ── Providers ────────────────────────────────────── */
+.providers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.provider-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 6px;
+  transition: border-color 0.15s;
+}
+.provider-card:hover { border-color: #484f58; }
+.provider-name {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 14px;
+}
+.provider-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.provider-tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(126, 231, 135, 0.1);
+  color: var(--green);
+  width: fit-content;
+  margin-top: 4px;
+}
+.provider-tag.setup {
+  background: rgba(227, 179, 65, 0.1);
+  color: var(--yellow);
+}
+
+/* ── How It Works ─────────────────────────────────── */
+.flow {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.flow-step {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  flex: 1;
+  min-width: 200px;
+  max-width: 260px;
+  text-align: center;
+}
+.flow-step .flow-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+}
+.flow-step h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.flow-step code {
+  display: inline-block;
+  font-size: 12px;
+  background: var(--bg-surface);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--green);
+}
+.flow-step p {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+.flow-arrow {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--text-muted);
+  font-size: 20px;
+}
+@media (max-width: 700px) {
+  .flow { flex-direction: column; align-items: center; gap: 0; }
+  .flow-step { max-width: 100%; }
+  .flow-arrow { transform: rotate(90deg); padding: 8px 0; }
+}
+
+/* ── Install ──────────────────────────────────────── */
+.install-methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.install-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+.install-card h3 {
+  font-size: 14px; font-weight: 600; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.install-card .install-cmd {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--green);
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.install-card .install-cmd:hover { border-color: #484f58; }
+.install-card .install-cmd .copy-btn {
+  position: absolute;
+  right: 8px; top: 50%; transform: translateY(-50%);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.install-card .install-cmd:hover .copy-btn { opacity: 1; }
+
+/* ── Env Section ──────────────────────────────────── */
+.env-demo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-width: 700px;
+}
+@media (max-width: 600px) {
+  .env-demo { grid-template-columns: 1fr; }
+}
+.env-block {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.env-block-header {
+  padding: 10px 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+.env-block-body {
+  padding: 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.8;
+  text-align: left;
+}
+
+/* ── Footer ───────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 40px 0;
+  text-align: center;
+}
+footer p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+footer .footer-links {
+  display: flex; gap: 20px; justify-content: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+footer .footer-links a { color: var(--text-dim); }
+footer .footer-links a:hover { color: var(--text); }
+
+/* ── Utils ────────────────────────────────────────── */
+.text-green { color: var(--green); }
+.text-dim { color: var(--text-dim); }
+.mt-4 { margin-top: 16px; }
+.mb-8 { margin-bottom: 32px; }
+</style>
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────── -->
+<nav>
+  <div class="container">
+    <a href="#" class="logo"><span>dv</span> dotvault</a>
+    <div class="links">
+      <a href="#agents">Agents</a>
+      <a href="#features">Features</a>
+      <a href="#quickstart">Quick Start</a>
+      <a href="#providers">Providers</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/jondot/dotvault" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────── -->
+<section class="hero">
+  <div class="container">
+    <h1>dotvault</h1>
+    <p class="tagline">Secrets for code agents and developers. No setup, no vendor lock-in, no secrets on disk.</p>
+    <div class="cta-row">
+      <a href="#install" class="btn btn-primary">Get Started</a>
+      <a href="https://github.com/jondot/dotvault" class="btn btn-secondary" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <span>~/my-project</span>
+      </div>
+      <div class="terminal-body">
+        <div><span class="prompt">$</span> <span class="cmd">dv init</span></div>
+        <div class="output">created .dotvault.toml</div>
+        <div style="margin-top:8px"><span class="prompt">$</span> <span class="cmd">dv put</span> <span class="flag">--provider</span> <span class="val">keychain</span> <span class="flag">--ref</span> <span class="val">my-api-key</span> <span class="flag">--value</span> <span class="val">"sk-..."</span></div>
+        <div class="output">&#10003; Stored secret at my-api-key via keychain</div>
+        <div style="margin-top:8px"><span class="prompt">$</span> <span class="cmd">dv add</span> <span class="flag">--name</span> <span class="val">API_KEY</span> <span class="flag">--provider</span> <span class="val">keychain</span> <span class="flag">--ref</span> <span class="val">my-api-key</span></div>
+        <div class="output">&#10003; Added API_KEY to .dotvault.toml</div>
+        <div style="margin-top:8px"><span class="prompt">$</span> <span class="cmd">dv run</span> <span class="flag">--</span> <span class="cmd">npm start</span></div>
+        <div class="output">listening on :3000</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Install ──────────────────────────────────────── -->
+<section id="install">
+  <div class="container" style="text-align:center;">
+    <div class="section-label">Install</div>
+    <h2 class="section-title">Pick your method</h2>
+    <p class="section-desc" style="margin-left:auto;margin-right:auto;">The CLI installs as <code>dv</code>. Choose whichever package manager you prefer.</p>
+    <div class="install-methods">
+      <div class="install-card" style="text-align:left;">
+        <h3>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="var(--orange)"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11z"/></svg>
+          Cargo
+        </h3>
+        <div class="install-cmd" onclick="copyCmd(this)">
+          cargo install dotvault
+          <span class="copy-btn">copy</span>
+        </div>
+      </div>
+      <div class="install-card" style="text-align:left;">
+        <h3>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="var(--red)"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11z"/></svg>
+          npm
+        </h3>
+        <div class="install-cmd" onclick="copyCmd(this)">
+          npm i -g @jondot/dotvault
+          <span class="copy-btn">copy</span>
+        </div>
+      </div>
+      <div class="install-card" style="text-align:left;">
+        <h3>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="var(--purple)"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11z"/></svg>
+          Binary
+        </h3>
+        <div class="install-cmd" onclick="window.open('https://github.com/jondot/dotvault/releases','_blank')">
+          GitHub Releases &rarr;
+          <span class="copy-btn">open</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Agent-Safe ───────────────────────────────────── -->
+<section id="agents">
+  <div class="container" style="text-align:center;">
+    <div class="section-label">Built for the agentic era</div>
+    <h2 class="section-title">Agent-safe by design</h2>
+    <p class="section-desc" style="margin-left:auto;margin-right:auto;">AI coding agents silently load <code>.env</code> files into LLM context, leaking secrets into model windows. dotvault resolves at runtime -- nothing to leak.</p>
+
+    <div class="features-grid" style="margin-bottom: 40px;">
+      <div class="feature-card" style="text-align:left;">
+        <div class="feature-icon" style="background:rgba(126,231,135,0.1);">&#128737;</div>
+        <h3>Secrets never touch disk</h3>
+        <p><code>.env</code> files get loaded into agent context. dotvault resolves at runtime -- your secrets never enter the AI's context window.</p>
+      </div>
+      <div class="feature-card" style="text-align:left;">
+        <div class="feature-icon" style="background:rgba(121,192,255,0.1);">&#123;&#125;</div>
+        <h3>Structured JSON output</h3>
+        <p><code>dv status --format json</code> and <code>dv export --format json</code> give agents machine-readable data instead of text to parse.</p>
+      </div>
+      <div class="feature-card" style="text-align:left;">
+        <div class="feature-icon" style="background:rgba(210,168,255,0.1);">&#10003;</div>
+        <h3>Pre-flight validation</h3>
+        <p><code>dv validate</code> checks config without resolving secrets. Agents verify their own edits before committing.</p>
+      </div>
+    </div>
+
+    <div class="terminal" style="max-width:680px;margin:0 auto;text-align:left;">
+      <div class="terminal-bar">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <span>agent workflow</span>
+      </div>
+      <div class="terminal-body" style="font-size:12px;line-height:1.7;">
+        <div><span class="prompt">$</span> <span class="cmd">dv status</span> <span class="flag">--format</span> <span class="val">json</span></div>
+        <div class="output">{</div>
+        <div class="output">&nbsp; "environment": "development",</div>
+        <div class="output">&nbsp; "all_ok": true,</div>
+        <div class="output">&nbsp; "secrets": [</div>
+        <div class="output">&nbsp;&nbsp;&nbsp; { "name": "<span style="color:var(--cyan)">API_KEY</span>", "provider": "keychain", "status": "<span style="color:var(--green)">ok</span>" },</div>
+        <div class="output">&nbsp;&nbsp;&nbsp; { "name": "<span style="color:var(--cyan)">DB_URL</span>", "provider": "env", "status": "<span style="color:var(--green)">ok</span>" }</div>
+        <div class="output">&nbsp; ]</div>
+        <div class="output">}</div>
+        <div style="margin-top:8px"><span class="prompt">$</span> <span class="cmd">dv run</span> <span class="flag">--only</span> <span class="val">API_KEY,DB_URL</span> <span class="flag">--clean-env</span> <span class="flag">--</span> <span class="cmd">npm start</span></div>
+        <div class="output">listening on :3000</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ─────────────────────────────────────── -->
+<section id="features">
+  <div class="container">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything else you need</h2>
+    <p class="section-desc">Provider-agnostic, environment-aware, team-friendly. One config file, any vault, every environment.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">&#128268;</div>
+        <h3>No vendor lock-in</h3>
+        <p>Swap between Keychain, 1Password, AWS, GCP, HashiCorp Vault, and more. Each dev picks what works for them.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#9654;&#65039;</div>
+        <h3>Drop-in replacement for .env</h3>
+        <p><code>dv run</code> injects secrets as env vars. No SDK, no code changes, no learning curve.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#127757;</div>
+        <h3>Per-environment wiring</h3>
+        <p>Development uses Keychain, staging uses Vault, production uses platform env vars. Same config file.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#9889;</div>
+        <h3>Shell auto-loading</h3>
+        <p><code>cd</code> into a project and secrets are there. Like <code>direnv</code>, but for secrets from any provider.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128101;</div>
+        <h3>Team-friendly</h3>
+        <p>Commit <code>.dotvault.toml</code> to your repo. Each developer resolves secrets from their own vault.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128274;</div>
+        <h3>Zero secrets on disk</h3>
+        <p>Secrets are resolved at runtime from your vault of choice. Nothing to leak, nothing to rotate in files.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── How It Works ─────────────────────────────────── -->
+<section id="how-it-works" style="padding-top: 40px;">
+  <div class="container" style="text-align:center;">
+    <div class="section-label">How it works</div>
+    <h2 class="section-title">Config &rarr; Resolve &rarr; Inject</h2>
+    <p class="section-desc" style="margin-left:auto;margin-right:auto;">One config file declares what secrets you need. dotvault resolves them at runtime and injects them into your process.</p>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-num">Step 1</div>
+        <h3>Declare</h3>
+        <code>.dotvault.toml</code>
+        <p>Map env var names to provider references. Commit this to your repo.</p>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">
+        <div class="flow-num">Step 2</div>
+        <h3>Resolve</h3>
+        <code>dv run</code>
+        <p>dotvault fetches each secret from its provider at runtime. Nothing hits disk.</p>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">
+        <div class="flow-num">Step 3</div>
+        <h3>Inject</h3>
+        <code>env vars</code>
+        <p>Secrets appear as environment variables in your subprocess. Your code doesn't change.</p>
+      </div>
+    </div>
+
+    <div style="margin-top: 48px; display:flex; flex-direction:column; align-items:center;">
+      <div class="env-demo">
+        <div class="env-block">
+          <div class="env-block-header">development</div>
+          <div class="env-block-body">
+            <div><span style="color:var(--text-dim)">[secrets]</span></div>
+            <div><span style="color:var(--cyan)">API_KEY</span> = { <span style="color:var(--orange)">provider</span> = <span style="color:var(--green)">"keychain"</span>, <span style="color:var(--orange)">ref</span> = <span style="color:var(--green)">"my-key"</span> }</div>
+            <div><span style="color:var(--cyan)">DB_URL</span> = { <span style="color:var(--orange)">provider</span> = <span style="color:var(--green)">"env"</span>, <span style="color:var(--orange)">ref</span> = <span style="color:var(--green)">"DEV_DB"</span> }</div>
+          </div>
+        </div>
+        <div class="env-block">
+          <div class="env-block-header">production</div>
+          <div class="env-block-body">
+            <div><span style="color:var(--text-dim)">[production.secrets]</span></div>
+            <div><span style="color:var(--cyan)">API_KEY</span> = { <span style="color:var(--orange)">provider</span> = <span style="color:var(--green)">"env"</span>, <span style="color:var(--orange)">ref</span> = <span style="color:var(--green)">"API_KEY"</span> }</div>
+            <div><span style="color:var(--cyan)">DB_URL</span> = { <span style="color:var(--orange)">provider</span> = <span style="color:var(--green)">"env"</span>, <span style="color:var(--orange)">ref</span> = <span style="color:var(--green)">"DATABASE_URL"</span> }</div>
+          </div>
+        </div>
+      </div>
+      <p class="text-dim mt-4" style="font-size: 13px;">Same config, same <code style="color:var(--green)">dv run</code> command. Environment is detected automatically.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Providers ────────────────────────────────────── -->
+<section id="providers">
+  <div class="container">
+    <div class="section-label">Providers</div>
+    <h2 class="section-title">Works with what you already use</h2>
+    <p class="section-desc">Eight providers built in. Mix and match per-secret, per-developer, per-environment.</p>
+    <div class="providers-grid">
+      <div class="provider-card">
+        <div class="provider-name">keychain</div>
+        <div class="provider-desc">macOS Keychain, Linux Secret Service</div>
+        <div class="provider-tag">zero setup</div>
+      </div>
+      <div class="provider-card">
+        <div class="provider-name">env</div>
+        <div class="provider-desc">Environment variables passthrough</div>
+        <div class="provider-tag">zero setup</div>
+      </div>
+      <div class="provider-card">
+        <div class="provider-name">1password</div>
+        <div class="provider-desc">1Password via <code>op</code> CLI</div>
+        <div class="provider-tag setup">requires op CLI</div>
+      </div>
+      <div class="provider-card">
+        <div class="provider-name">age</div>
+        <div class="provider-desc">age-encrypted files committed to repo</div>
+        <div class="provider-tag setup">requires age CLI</div>
+      </div>
+      <div class="provider-card">
+        <div class="provider-name">hashicorp</div>
+        <div class="provider-desc">HashiCorp Vault KV engine</div>
+        <div class="provider-tag setup">requires Vault server</div>
+      </div>
+      <div class="provider-card">
+        <div class="provider-name">aws</div>
+        <div class="provider-desc">Secrets Manager + SSM Parameter Store</div>
+        <div class="provider-tag setup">requires AWS creds</div>
+      </div>
+      <div class="provider-card">
+        <div class="provider-name">gcp</div>
+        <div class="provider-desc">Google Cloud Secret Manager</div>
+        <div class="provider-tag setup">requires GCP creds</div>
+      </div>
+      <div class="provider-card">
+        <div class="provider-name">keyzero</div>
+        <div class="provider-desc">Self-hosted keyzero server</div>
+        <div class="provider-tag setup">requires keyzero</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Quick Start ──────────────────────────────────── -->
+<section id="quickstart">
+  <div class="container">
+    <div class="section-label">Quick Start</div>
+    <h2 class="section-title">Up and running in 60 seconds</h2>
+    <p class="section-desc">Four commands from zero to secrets-in-your-process.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Initialize your project</h3>
+          <p>Creates a <code>.dotvault.toml</code> config file in your project root.</p>
+          <div class="step-code"><span style="color:var(--green)">$</span> dv init</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Store a secret</h3>
+          <p>Write a secret value to your vault of choice. Here we use the OS keychain.</p>
+          <div class="step-code"><span style="color:var(--green)">$</span> dv put <span style="color:var(--cyan)">--provider</span> <span style="color:var(--orange)">keychain</span> <span style="color:var(--cyan)">--ref</span> <span style="color:var(--orange)">my-api-key</span> <span style="color:var(--cyan)">--value</span> <span style="color:var(--orange)">"sk-..."</span></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Map it to an env var</h3>
+          <p>Tell dotvault which env var name maps to which secret reference.</p>
+          <div class="step-code"><span style="color:var(--green)">$</span> dv add <span style="color:var(--cyan)">--name</span> <span style="color:var(--orange)">API_KEY</span> <span style="color:var(--cyan)">--provider</span> <span style="color:var(--orange)">keychain</span> <span style="color:var(--cyan)">--ref</span> <span style="color:var(--orange)">my-api-key</span></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Run with secrets</h3>
+          <p>Secrets are resolved and injected. Your code reads normal env vars.</p>
+          <div class="step-code"><span style="color:var(--green)">$</span> dv run <span style="color:var(--cyan)">--</span> npm start</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ──────────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <div class="footer-links">
+      <a href="https://github.com/jondot/dotvault" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/jondot/dotvault/issues" target="_blank" rel="noopener">Issues</a>
+      <a href="https://crates.io/crates/dotvault" target="_blank" rel="noopener">Crates.io</a>
+      <a href="https://www.npmjs.com/package/@jondot/dotvault" target="_blank" rel="noopener">npm</a>
+    </div>
+    <p>MIT License &middot; Built by <a href="https://github.com/jondot" target="_blank" rel="noopener">jondot</a></p>
+  </div>
+</footer>
+
+<script>
+function copyCmd(el) {
+  const text = el.childNodes[0].textContent.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = el.querySelector('.copy-btn');
+    if (btn) {
+      btn.textContent = 'copied!';
+      setTimeout(() => { btn.textContent = 'copy'; }, 1500);
+    }
+  });
+}
+</script>
+</body>
+</html>

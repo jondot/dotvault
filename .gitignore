@@ -2,3 +2,4 @@
 .dotvault.local.toml
 *.age
 docs/superpowers/
+.superpowers

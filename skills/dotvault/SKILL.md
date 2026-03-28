@@ -84,7 +84,24 @@ After displaying the table, prompt:
 
 **For subsequent environments** (e.g., production after development):
 
-- Pre-fill the table from the previous environment's confirmed mappings
+- **Discover existing env vars on the platform first.** Before presenting the mapping table, ask the user what platform the environment runs on and run the appropriate CLI command to list existing env var names:
+
+  | Platform | Command |
+  |----------|---------|
+  | Heroku | `heroku config --shell --app <app> \| cut -d= -f1` |
+  | Vercel | `vercel env ls <environment>` |
+  | Fly.io | `fly secrets list --app <app>` |
+  | Railway | `railway variables` |
+  | Render | `render env list` |
+  | AWS ECS | Check task definition environment variables |
+  | Kubernetes | `kubectl get secret <name> -o jsonpath='{.data}' \| jq 'keys'` |
+  | Docker Compose | Read `environment:` section in `docker-compose.yml` |
+  | Generic / SSH | `ssh <host> env \| cut -d= -f1 \| sort` |
+
+  Use the discovered env var names to pre-fill the production table — each one becomes `provider = "env"` with `ref` set to the var name (passthrough). Merge with any secrets from the development mapping that weren't found on the platform.
+
+  If the user doesn't know or the platform isn't listed, fall back to copying from the previous environment's mappings.
+
 - Adjust recommendations: flip `keychain` → `env` for production (CI/CD environments typically inject secrets via env vars)
 - Let the user adjust again before confirming
 

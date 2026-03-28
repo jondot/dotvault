@@ -17,6 +17,11 @@ async fn localstack_available() -> bool {
 }
 
 fn localstack_config() -> HashMap<String, toml::Value> {
+    // LocalStack accepts any credentials — set dummy values so the SDK doesn't
+    // try to resolve real AWS creds (which causes "dispatch failure").
+    std::env::set_var("AWS_ACCESS_KEY_ID", "test");
+    std::env::set_var("AWS_SECRET_ACCESS_KEY", "test");
+
     HashMap::from([
         ("region".to_string(), toml::Value::String("us-east-1".to_string())),
         ("endpoint_url".to_string(), toml::Value::String("http://localhost:4566".to_string())),
@@ -129,8 +134,6 @@ async fn test_aws_ssm_resolve_parameter() {
 #[tokio::test]
 async fn test_aws_invalid_prefix_errors() {
     // This test doesn't need LocalStack — it just checks local validation
-    use aws_config::BehaviorVersion;
-    // We build the resolver but skip actual resolution if LocalStack is unavailable
     // The prefix check is synchronous logic, so we use a dummy config
     let config = HashMap::from([
         ("region".to_string(), toml::Value::String("us-east-1".to_string())),

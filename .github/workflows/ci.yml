@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      localstack:
+        image: localstack/localstack
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: secretsmanager,ssm
+          DEFAULT_REGION: us-east-1
+      vault:
+        image: hashicorp/vault
+        ports:
+          - 8200:8200
+        env:
+          VAULT_DEV_ROOT_TOKEN_ID: test-root-token
+        options: --cap-add=IPC_LOCK
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Wait for LocalStack
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4566/_localstack/health > /dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          echo "LocalStack not ready" && exit 1
+
+      - name: Wait for Vault
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8200/v1/sys/health > /dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          echo "Vault not ready" && exit 1
+
+      - name: Enable Vault KV v2 engine
+        run: |
+          curl -sf -X POST http://localhost:8200/v1/sys/mounts/secret \
+            -H "X-Vault-Token: test-root-token" \
+            -d '{"type": "kv", "options": {"version": "2"}}' || true
+
+      - name: Run all tests
+        env:
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+        run: cargo xtask test

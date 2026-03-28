@@ -91,6 +91,75 @@ pub async fn resolve_all(
     Ok(secrets)
 }
 
+/// Resolves each secret individually, returning per-secret pass/fail results.
+/// Unlike `resolve_all`, this does not fail on the first error — it collects all results.
+/// The `only` filter works the same as in `resolve_all`.
+pub async fn resolve_each(
+    config: &DotVaultConfig,
+    only: Option<&[String]>,
+) -> Result<Vec<(String, Result<SecretString, String>)>> {
+    let providers = build_providers(config).await?;
+
+    let secrets_to_resolve: Vec<(&String, &SecretEntry)> = match only {
+        Some(keys) => {
+            let mut not_found: Vec<&str> = Vec::new();
+            for key in keys {
+                if !config.secrets.contains_key(key) {
+                    not_found.push(key);
+                }
+            }
+            if !not_found.is_empty() {
+                not_found.sort();
+                return Err(anyhow!(
+                    "secret(s) not found in config: {}",
+                    not_found.join(", ")
+                ));
+            }
+            config
+                .secrets
+                .iter()
+                .filter(|(name, _)| keys.iter().any(|k| k == *name))
+                .collect()
+        }
+        None => config.secrets.iter().collect(),
+    };
+
+    let futures: Vec<_> = secrets_to_resolve
+        .into_iter()
+        .map(|(secret_name, entry)| {
+            let providers = &providers;
+            let secret_name = secret_name.clone();
+            let entry = entry.clone();
+            async move {
+                let provider = match providers.get(&entry.provider) {
+                    Some(p) => p,
+                    None => {
+                        return (
+                            secret_name,
+                            Err(format!("unknown provider '{}'", entry.provider)),
+                        );
+                    }
+                };
+                let request = build_request(&entry);
+                match provider.resolve(&request).await {
+                    Ok(resolved) => {
+                        if !entry.allow_empty && resolved.value.expose_secret().is_empty() {
+                            (secret_name, Err("resolved to empty value".to_string()))
+                        } else {
+                            (secret_name, Ok(resolved.value))
+                        }
+                    }
+                    Err(e) => (secret_name, Err(format!("{e}"))),
+                }
+            }
+        })
+        .collect();
+
+    let mut results: Vec<(String, Result<SecretString, String>)> = join_all(futures).await;
+    results.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(results)
+}
+
 /// Attempts to resolve all secrets, returning a list of (name, entry) pairs
 /// for secrets that failed to resolve (i.e., are "missing").
 pub async fn find_missing(config: &DotVaultConfig) -> Result<Vec<(String, SecretEntry)>> {
@@ -499,5 +568,52 @@ mod tests {
         let msg = result.unwrap_err().to_string();
         assert!(msg.contains("NONEXISTENT"));
         assert!(msg.contains("not found in config"));
+    }
+
+    #[tokio::test]
+    async fn test_resolve_each_returns_per_secret_results() {
+        std::env::set_var("TEST_EACH_OK", "good_value");
+        // TEST_EACH_MISSING is intentionally not set
+
+        let mut secrets = HashMap::new();
+        secrets.insert(
+            "OK_SECRET".to_string(),
+            SecretEntry {
+                provider: "env".to_string(),
+                allow_empty: false,
+                extra: {
+                    let mut m = HashMap::new();
+                    m.insert("ref".to_string(), toml::Value::String("TEST_EACH_OK".to_string()));
+                    m
+                },
+            },
+        );
+        secrets.insert(
+            "BAD_SECRET".to_string(),
+            SecretEntry {
+                provider: "env".to_string(),
+                allow_empty: false,
+                extra: {
+                    let mut m = HashMap::new();
+                    m.insert("ref".to_string(), toml::Value::String("TEST_EACH_MISSING".to_string()));
+                    m
+                },
+            },
+        );
+
+        let config = DotVaultConfig {
+            providers: HashMap::new(),
+            secrets,
+        };
+
+        let results = resolve_each(&config, None).await.unwrap();
+        assert_eq!(results.len(), 2);
+
+        let ok = results.iter().find(|(name, _)| name == "OK_SECRET").unwrap();
+        assert!(ok.1.is_ok());
+        assert_eq!(ok.1.as_ref().unwrap().expose_secret(), "good_value");
+
+        let bad = results.iter().find(|(name, _)| name == "BAD_SECRET").unwrap();
+        assert!(bad.1.is_err());
     }
 }
