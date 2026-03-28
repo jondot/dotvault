@@ -4,7 +4,7 @@ use anyhow::Result;
 use secret_resolvers::ExposeSecret;
 
 pub async fn export_secrets(config: &DotVaultConfig) -> Result<String> {
-    let secrets = resolve_all(config).await?;
+    let secrets = resolve_all(config, None).await?;
 
     let mut lines: Vec<String> = secrets
         .into_iter()

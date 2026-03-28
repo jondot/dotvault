@@ -5,12 +5,38 @@ use secret_resolvers::{ExposeSecret, ResolveRequest, SecretResolver, SecretStrin
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub async fn resolve_all(config: &DotVaultConfig) -> Result<HashMap<String, SecretString>> {
+pub async fn resolve_all(
+    config: &DotVaultConfig,
+    only: Option<&[String]>,
+) -> Result<HashMap<String, SecretString>> {
     let providers = build_providers(config).await?;
 
-    let futures: Vec<_> = config
-        .secrets
-        .iter()
+    let secrets_to_resolve: Vec<(&String, &SecretEntry)> = match only {
+        Some(keys) => {
+            let mut not_found: Vec<&str> = Vec::new();
+            for key in keys {
+                if !config.secrets.contains_key(key) {
+                    not_found.push(key);
+                }
+            }
+            if !not_found.is_empty() {
+                not_found.sort();
+                return Err(anyhow!(
+                    "secret(s) not found in config: {}",
+                    not_found.join(", ")
+                ));
+            }
+            config
+                .secrets
+                .iter()
+                .filter(|(name, _)| keys.iter().any(|k| k == *name))
+                .collect()
+        }
+        None => config.secrets.iter().collect(),
+    };
+
+    let futures: Vec<_> = secrets_to_resolve
+        .into_iter()
         .map(|(secret_name, entry)| {
             let providers = &providers;
             let secret_name = secret_name.clone();
@@ -235,7 +261,7 @@ mod tests {
             secrets,
         };
 
-        let resolved = resolve_all(&config).await.unwrap();
+        let resolved = resolve_all(&config, None).await.unwrap();
         assert_eq!(resolved["MY_SECRET"].expose_secret(), "hello_world");
     }
 
@@ -266,7 +292,7 @@ mod tests {
         );
 
         let config = DotVaultConfig { providers, secrets };
-        let resolved = resolve_all(&config).await.unwrap();
+        let resolved = resolve_all(&config, None).await.unwrap();
         assert_eq!(resolved["MY_SECRET"].expose_secret(), "named-value");
     }
 
@@ -296,7 +322,7 @@ mod tests {
             secrets,
         };
 
-        let result = resolve_all(&config).await;
+        let result = resolve_all(&config, None).await;
         assert!(result.is_err());
         let msg = result.unwrap_err().to_string();
         assert!(msg.contains("empty value"));
@@ -328,7 +354,7 @@ mod tests {
             secrets,
         };
 
-        let result = resolve_all(&config).await;
+        let result = resolve_all(&config, None).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap()["MY_SECRET"].expose_secret(), "");
     }
@@ -411,9 +437,67 @@ mod tests {
             secrets,
         };
 
-        let result = resolve_all(&config).await;
+        let result = resolve_all(&config, None).await;
         assert!(result.is_err());
         let msg = result.unwrap_err().to_string();
         assert!(msg.contains("unknown provider type"));
+    }
+
+    #[tokio::test]
+    async fn test_resolve_all_with_only_filter() {
+        std::env::set_var("TEST_ONLY_A", "value_a");
+        std::env::set_var("TEST_ONLY_B", "value_b");
+
+        let mut secrets = HashMap::new();
+        secrets.insert(
+            "SECRET_A".to_string(),
+            SecretEntry {
+                provider: "env".to_string(),
+                allow_empty: false,
+                extra: {
+                    let mut m = HashMap::new();
+                    m.insert("ref".to_string(), toml::Value::String("TEST_ONLY_A".to_string()));
+                    m
+                },
+            },
+        );
+        secrets.insert(
+            "SECRET_B".to_string(),
+            SecretEntry {
+                provider: "env".to_string(),
+                allow_empty: false,
+                extra: {
+                    let mut m = HashMap::new();
+                    m.insert("ref".to_string(), toml::Value::String("TEST_ONLY_B".to_string()));
+                    m
+                },
+            },
+        );
+
+        let config = DotVaultConfig {
+            providers: HashMap::new(),
+            secrets,
+        };
+
+        let only = Some(vec!["SECRET_A".to_string()]);
+        let resolved = resolve_all(&config, only.as_deref()).await.unwrap();
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved["SECRET_A"].expose_secret(), "value_a");
+        assert!(!resolved.contains_key("SECRET_B"));
+    }
+
+    #[tokio::test]
+    async fn test_resolve_all_only_rejects_unknown_key() {
+        let config = DotVaultConfig {
+            providers: HashMap::new(),
+            secrets: HashMap::new(),
+        };
+
+        let only = Some(vec!["NONEXISTENT".to_string()]);
+        let result = resolve_all(&config, only.as_deref()).await;
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("NONEXISTENT"));
+        assert!(msg.contains("not found in config"));
     }
 }

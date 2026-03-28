@@ -4,7 +4,7 @@ use anyhow::Result;
 use secret_resolvers::ExposeSecret;
 
 pub async fn run_command(config: &DotVaultConfig, cmd: &str, args: &[String]) -> Result<()> {
-    let secrets = resolve_all(config).await?;
+    let secrets = resolve_all(config, None).await?;
 
     let mut command = std::process::Command::new(cmd);
     command.args(args);
