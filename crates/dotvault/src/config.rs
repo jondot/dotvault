@@ -28,7 +28,7 @@ const ENV_DETECTION_ORDER: &[&str] = &[
     "RACK_ENV",
 ];
 
-fn detect_environment() -> String {
+pub fn detect_environment() -> String {
     detect_environment_with(&|key| std::env::var(key).ok())
 }
 

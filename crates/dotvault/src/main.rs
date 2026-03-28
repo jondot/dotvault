@@ -4,6 +4,7 @@ mod export;
 mod resolve;
 mod run;
 mod set;
+mod status;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -28,6 +29,12 @@ enum Commands {
         /// Only resolve these secrets (comma-separated)
         #[arg(long, value_delimiter = ',')]
         only: Option<Vec<String>>,
+        /// Clear inherited environment, keeping only essential OS vars and resolved secrets
+        #[arg(long)]
+        clean_env: bool,
+        /// Additional env vars to preserve when using --clean-env (comma-separated)
+        #[arg(long, value_delimiter = ',', requires = "clean_env")]
+        keep_env: Option<Vec<String>>,
         /// Command and arguments to run
         #[arg(trailing_var_arg = true, required = true)]
         cmd: Vec<String>,
@@ -35,6 +42,15 @@ enum Commands {
     /// Resolve secrets and print `export KEY='VALUE'` lines
     Export {
         /// Only resolve these secrets (comma-separated)
+        #[arg(long, value_delimiter = ',')]
+        only: Option<Vec<String>>,
+        /// Output format
+        #[arg(long, value_enum, default_value_t = OutputFormat::Text)]
+        format: OutputFormat,
+    },
+    /// Show resolution status for each secret
+    Status {
+        /// Only check these secrets (comma-separated)
         #[arg(long, value_delimiter = ',')]
         only: Option<Vec<String>>,
     },
@@ -83,6 +99,13 @@ enum Commands {
     },
 }
 
+#[derive(Copy, Clone, ValueEnum, Default)]
+enum OutputFormat {
+    #[default]
+    Text,
+    Json,
+}
+
 #[derive(Copy, Clone, ValueEnum)]
 enum Shell {
     Zsh,
@@ -111,7 +134,7 @@ async fn run() -> Result<()> {
     };
 
     match command {
-        Commands::Run { only, cmd } => {
+        Commands::Run { only, clean_env, keep_env, cmd } => {
             let dir = cli
                 .dir
                 .unwrap_or_else(|| std::env::current_dir().unwrap());
@@ -119,17 +142,36 @@ async fn run() -> Result<()> {
             config.merge_global_providers()?;
 
             let (program, args) = cmd.split_first().expect("cmd must be non-empty");
-            run::run_command(&config, program, args, only.as_deref()).await?;
+            run::run_command(&config, program, args, only.as_deref(), clean_env, keep_env.as_deref()).await?;
         }
-        Commands::Export { only } => {
+        Commands::Export { only, format } => {
+            let dir = cli
+                .dir
+                .unwrap_or_else(|| std::env::current_dir().unwrap());
+            let mut config = DotVaultConfig::load_from_dir(&dir)?;
+            config.merge_global_providers()?;
+            match format {
+                OutputFormat::Text => {
+                    let output = export::export_secrets(&config, only.as_deref()).await?;
+                    println!("{}", output);
+                }
+                OutputFormat::Json => {
+                    let output = export::export_secrets_json(&config, only.as_deref()).await?;
+                    println!("{}", output);
+                }
+            }
+        }
+        Commands::Status { only } => {
             let dir = cli
                 .dir
                 .unwrap_or_else(|| std::env::current_dir().unwrap());
             let mut config = DotVaultConfig::load_from_dir(&dir)?;
             config.merge_global_providers()?;
 
-            let output = export::export_secrets(&config, only.as_deref()).await?;
-            println!("{}", output);
+            let all_ok = status::show_status(&dir, &config, only.as_deref()).await?;
+            if !all_ok {
+                std::process::exit(1);
+            }
         }
         Commands::Init => {
             let dir = cli
