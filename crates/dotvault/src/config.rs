@@ -219,6 +219,7 @@ impl DotVaultConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use tempfile::TempDir;
 
     fn mock_env<'a>(vars: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
@@ -360,6 +361,7 @@ ref = "LOCAL_VAR"
     }
 
     #[test]
+    #[serial]
     fn test_env_aware_loading_selects_production() {
         let dir = TempDir::new().unwrap();
         write_file(
@@ -388,6 +390,7 @@ ref = "PROD_KEY"
     }
 
     #[test]
+    #[serial]
     fn test_env_aware_loading_defaults_to_development() {
         let dir = TempDir::new().unwrap();
         write_file(
@@ -416,6 +419,7 @@ ref = "PROD_KEY"
     }
 
     #[test]
+    #[serial]
     fn test_bare_secrets_only_ignores_env_detection() {
         let dir = TempDir::new().unwrap();
         write_file(
@@ -439,6 +443,7 @@ ref = "MY_KEY"
     }
 
     #[test]
+    #[serial]
     fn test_missing_environment_errors_when_env_sections_exist() {
         let dir = TempDir::new().unwrap();
         write_file(
@@ -466,6 +471,7 @@ ref = "PROD_KEY"
     }
 
     #[test]
+    #[serial]
     fn test_both_secrets_and_development_secrets_errors() {
         let dir = TempDir::new().unwrap();
         write_file(
@@ -548,6 +554,7 @@ ref = "DEV_KEY_2"
     }
 
     #[test]
+    #[serial]
     fn test_providers_shared_across_environments() {
         let dir = TempDir::new().unwrap();
         write_file(
@@ -706,6 +713,7 @@ KEY_B = { provider = "env", ref = "LOCAL_B" }
     }
 
     #[test]
+    #[serial]
     fn test_full_env_aware_config_with_multiple_environments() {
         let dir = TempDir::new().unwrap();
         write_file(
