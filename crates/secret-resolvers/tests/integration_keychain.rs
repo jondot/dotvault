@@ -1,4 +1,4 @@
-#![cfg(feature = "keychain")]
+#![cfg(all(feature = "keychain", target_os = "macos"))]
 
 use secret_resolvers::{KeychainResolver, SecretResolver, ResolveRequest, ExposeSecret};
 use std::collections::HashMap;
