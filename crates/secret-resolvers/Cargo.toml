@@ -42,8 +42,9 @@ wiremock = "0.6"
 base64 = "0.22"
 
 [features]
-default = ["env"]
+default = ["env", "file"]
 env = []
+file = []
 onepassword = []
 keychain = ["dep:keyring", "dep:security-framework"]
 age-provider = ["dep:age"]
@@ -51,4 +52,4 @@ aws = ["dep:aws-config", "dep:aws-sdk-secretsmanager", "dep:aws-sdk-ssm"]
 hashicorp = ["dep:reqwest"]
 gcp = ["dep:reqwest", "dep:base64"]
 keyzero = ["dep:reqwest"]
-all = ["env", "onepassword", "keychain", "age-provider", "aws", "hashicorp", "gcp", "keyzero"]
+all = ["env", "file", "onepassword", "keychain", "age-provider", "aws", "hashicorp", "gcp", "keyzero"]

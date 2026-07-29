@@ -245,6 +245,12 @@ async fn create_provider(
                 .map_err(|e| anyhow!("failed to create env provider: {}", e))?;
             Ok(Arc::new(r))
         }
+        "file" => {
+            use secret_resolvers::FileResolver;
+            let r = FileResolver::new(config)
+                .map_err(|e|anyhow!("failed to create file provider: {e}"))?;
+            Ok(Arc::new(r))
+        }
         "1password" => {
             use secret_resolvers::OnePasswordResolver;
             let r = OnePasswordResolver::new(config)
