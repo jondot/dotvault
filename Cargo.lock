@@ -2733,6 +2733,7 @@ dependencies = [
  "aws-sdk-secretsmanager",
  "aws-sdk-ssm",
  "base64 0.22.1",
+ "dirs",
  "keyring",
  "reqwest",
  "secrecy",
