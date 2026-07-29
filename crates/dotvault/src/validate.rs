@@ -3,7 +3,7 @@ use anyhow::Result;
 use std::path::Path;
 
 const KNOWN_PROVIDERS: &[&str] = &[
-    "env", "keychain", "1password", "age", "hashicorp", "aws", "gcp", "keyzero",
+    "env", "file", "keychain", "1password", "age", "hashicorp", "aws", "gcp", "keyzero",
 ];
 
 pub struct ValidationResult {

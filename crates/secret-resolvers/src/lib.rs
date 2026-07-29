@@ -7,6 +7,11 @@ pub mod env;
 #[cfg(feature = "env")]
 pub use env::EnvResolver;
 
+#[cfg(feature = "file")]
+pub mod file;
+#[cfg(feature = "file")]
+pub use file::FileResolver;
+
 #[cfg(feature = "onepassword")]
 pub mod onepassword;
 #[cfg(feature = "onepassword")]

@@ -7,7 +7,7 @@ use std::path::Path;
 use crate::config::DotVaultConfig;
 use crate::resolve;
 
-const WRITABLE_PROVIDERS: &[&str] = &["1password", "keychain", "aws", "hashicorp"];
+const WRITABLE_PROVIDERS: &[&str] = &["file", "1password", "keychain", "aws", "hashicorp"];
 
 pub async fn set_secret(
     dir: &Path,
@@ -223,6 +223,10 @@ async fn create_writer(
             secret_resolvers::AwsResolver::new(config)
                 .await
                 .map_err(|e| anyhow::anyhow!("failed to create aws provider: {e}"))?,
+        )),
+        "file" => Ok(Box::new(
+            secret_resolvers::FileResolver::new(config)
+                .map_err(|e|anyhow::anyhow!("Failed to create file provider: {e}"))?,
         )),
         other => bail!(
             "Provider type '{other}' does not support writing. Supported: {}",

@@ -11,6 +11,7 @@ const PROVIDERS: &[&str] = &[
     "age",
     "env",
     "keyzero",
+    "file",
 ];
 
 const FIELD_REQUIRED: &[&str] = &["hashicorp"];
