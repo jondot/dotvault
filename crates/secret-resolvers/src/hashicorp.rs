@@ -25,7 +25,11 @@ impl HashiCorpResolver {
             .and_then(|v| v.as_str())
             .map(String::from)
             .or_else(|| std::env::var("VAULT_TOKEN").ok())
-            .ok_or_else(|| ResolverError::ConfigError("vault token is required (set 'token' in config or VAULT_TOKEN env var)".to_string()))?;
+            .or_else(|| {
+                let home = dirs::home_dir()?;
+                std::fs::read_to_string(home.join(".vault-token")).ok()
+            })
+            .ok_or_else(|| ResolverError::ConfigError("vault token is required (set 'token' in config, VAULT_TOKEN env var or ~/.vault-token)".to_string()))?;
 
         let namespace = config
             .get("namespace")
